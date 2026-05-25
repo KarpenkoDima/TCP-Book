@@ -219,6 +219,9 @@ For full documentation visit [mkdocs.org](https://www.mkdocs.org).
 
 ---
 
+#### [Практика. Custom Reliable UDP Protocol:] (modules/Practiec-Custom-Reliable-UDP-Protocol.md)
+---
+
 ## Как читать
 
 **Путь пакета (последовательно):**
