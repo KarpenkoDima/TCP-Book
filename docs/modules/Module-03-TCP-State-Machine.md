@@ -447,6 +447,28 @@ RACK включён по умолчанию в современных ядрах
   │  CLOSED                            │
 ```
 
+```mermaid
+sequenceDiagram
+    participant C as Клиент (Active Close)
+    participant S as Сервер (Passive Close)
+
+    C->>S: FIN (seq=X)
+    S-->>C: ACK (ack=X+1)
+    Note over C, S: FIN_WAIT_1 → CLOSE_WAIT
+    Note over C: FIN_WAIT_2
+    
+    rect rgb(240, 240, 240)
+    Note over S: Сервер может ещё<br/>отправлять данные
+    end
+    
+    S->>C: FIN (seq=Y)
+    Note over S: LAST_ACK
+    C->>S: ACK (ack=Y+1)
+    Note over C: TIME_WAIT (2MSL)
+    Note over S: CLOSED
+    Note over C: CLOSED
+```
+
 ### CLOSE_WAIT: Ваш код сломан
 
 CLOSE_WAIT означает: **другая сторона закрыла соединение (послала FIN), но ваше приложение не вызвало `close()`**. Это **всегда** баг в приложении — утечка сокетов.
