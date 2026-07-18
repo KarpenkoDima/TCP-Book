@@ -2,13 +2,19 @@ site_name: Полное руководство по TCP
 site_description: От физического уровня до современных алгоритмов (CUBIC, BBR) и QUIC.
 theme:
   name: material
+
   palette:
     primary: indigo
     accent: deep purple
   features:
     - navigation.tabs # Верхние вкладки
     - navigation.sections # Сворачиваемые разделы
-
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Главная: index.md
   - Теория сетей:
