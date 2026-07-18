@@ -449,24 +449,29 @@ RACK включён по умолчанию в современных ядрах
 
 ```mermaid
 sequenceDiagram
-    participant C as Клиент (Active Close)
-    participant S as Сервер (Passive Close)
+    participant C as Клиент
+    participant S as Сервер
 
+    Note over C, S: ESTABLISHED
+    
     C->>S: FIN (seq=X)
+    Note over C: FIN_WAIT_1
     S-->>C: ACK (ack=X+1)
-    Note over C, S: FIN_WAIT_1 → CLOSE_WAIT
+    Note over S: CLOSE_WAIT
     Note over C: FIN_WAIT_2
     
     rect rgb(240, 240, 240)
-    Note over S: Сервер может ещё<br/>отправлять данные
+    Note over S: Сервер продолжает<br/>отправку данных (если есть)
     end
     
     S->>C: FIN (seq=Y)
     Note over S: LAST_ACK
+    
     C->>S: ACK (ack=Y+1)
     Note over C: TIME_WAIT (2MSL)
     Note over S: CLOSED
-    Note over C: CLOSED
+    
+    Note over C: CLOSED (после тайм-аута)
 ```
 
 ### CLOSE_WAIT: Ваш код сломан
