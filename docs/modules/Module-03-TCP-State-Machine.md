@@ -825,6 +825,29 @@ iperf3 -c 192.168.50.10 -t 30
   │  ── HTTP GET (encrypted) ─────────────→│  RTT 4 (первый запрос!)
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C->>S: TCP SYN
+    S-->>C: TCP SYN-ACK
+    C->>S: TCP ACK
+
+    Note over C, S: RTT 2: TLS Handshake (Part 1)
+    C->>S: ClientHello
+    S-->>C: ServerHello, Certificate, ServerKeyExchange, ServerHelloDone
+
+    Note over C, S: RTT 3: TLS Handshake (Part 2)
+    C->>S: ClientKeyExchange, ChangeCipherSpec, Finished
+    S-->>C: ChangeCipherSpec, Finished
+
+    Note over C, S: RTT 4: Application Data
+    C->>S: HTTP GET (encrypted)
+    S-->>C: HTTP Response (encrypted)
+```
 **Итого:** 3 RTT до первого байта данных (1 TCP + 2 TLS). При RTT = 100ms — 300ms ожидания.
 
 ### TLS 1.3 — 1 дополнительный RTT
@@ -845,6 +868,26 @@ iperf3 -c 192.168.50.10 -t 30
   │  ── HTTP GET (encrypted) ─────────────→ │  RTT 3 (первый запрос)
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C->>S: TCP SYN
+    S-->>C: TCP SYN-ACK
+    C->>S: TCP ACK
+
+    Note over C, S: RTT 2: TLS 1.3 Handshake
+    C->>S: ClientHello + KeyShare
+    S-->>C: ServerHello + KeyShare, EncryptedExtensions, Certificate, Finished
+    C->>S: Finished
+
+    Note over C, S: RTT 3: Application Data
+    C->>S: HTTP GET (encrypted)
+    S-->>C: HTTP Response (encrypted)
+```
 **Итого:** 2 RTT до первого байта данных (1 TCP + 1 TLS). Ключевая оптимизация: клиент отправляет `KeyShare` уже в `ClientHello`, сервер может сразу вычислить общий секрет.
 
 ### TLS 1.3 0-RTT (Early Data)
@@ -864,6 +907,23 @@ iperf3 -c 192.168.50.10 -t 30
   │     + HTTP Response ──────────────────  │
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C->>S: TCP SYN
+    S-->>C: TCP SYN-ACK
+    C->>S: TCP ACK
+
+    Note over C, S: RTT 2: TLS 1.3 0-RTT
+    C->>S: ClientHello + KeyShare + Early Data (HTTP GET)
+    S-->>C: ServerHello + EncryptedExtensions + Finished + HTTP Response
+
+    Note over C, S: Соединение установлено
+```
 **Итого:** 1 RTT до первого байта данных. Клиент отправляет зашифрованный HTTP-запрос **вместе с ClientHello**, используя PSK (Pre-Shared Key) из предыдущей сессии.
 
 **Опасность 0-RTT:** Early Data не защищена от replay-атак. Сервер не может гарантировать, что запрос не был перехвачен и воспроизведён. Поэтому 0-RTT безопасен **только для идемпотентных запросов** (GET, HEAD). Никогда — для POST с side effects.
@@ -880,6 +940,18 @@ iperf3 -c 192.168.50.10 -t 30
   │     + HTTP Response ──────────────────  │
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: 1 RTT: TCP Fast Open + TLS 0-RTT
+    C->>S: SYN + TFO Cookie + ClientHello + KeyShare + Early Data (HTTP GET)
+    S-->>C: SYN-ACK + ServerHello + Finished + HTTP Response
+
+    Note over C, S: Соединение установлено (данные получены)
+```
 Комбинация TCP Fast Open (часть 3.3) и TLS 1.3 0-RTT позволяет отправить HTTP-запрос **в первом же SYN-пакете**. Реальный 0-RTT.
 
 ### kTLS — шифрование в ядре
