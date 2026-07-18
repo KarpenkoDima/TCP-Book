@@ -49,6 +49,30 @@
           └───────────┘    timeout         └───────────┘
 ```
 
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> LISTEN : Passive Open
+    CLOSED --> SYN_SENT : Active Open
+    
+    LISTEN --> SYN_RCVD : Recv SYN / Send SYN+ACK
+    SYN_SENT --> ESTABLISHED : Recv SYN+ACK / Send ACK
+    SYN_RCVD --> ESTABLISHED : Recv ACK
+    
+    ESTABLISHED --> FIN_WAIT_1 : Close / Send FIN
+    ESTABLISHED --> CLOSE_WAIT : Recv FIN / Send ACK
+    
+    FIN_WAIT_1 --> FIN_WAIT_2 : Recv ACK
+    FIN_WAIT_1 --> CLOSING : Recv FIN+ACK / Send ACK
+    CLOSING --> TIME_WAIT : Recv ACK
+    
+    FIN_WAIT_2 --> TIME_WAIT : Recv FIN / Send ACK
+    CLOSE_WAIT --> LAST_ACK : Close / Send FIN
+    LAST_ACK --> CLOSED : Recv ACK
+    
+    TIME_WAIT --> CLOSED : 2MSL timeout
+```
+
 Каждое состояние — это конкретное поле в структуре `struct sock` в ядре:
 
 ```c
