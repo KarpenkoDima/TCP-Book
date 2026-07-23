@@ -1,0 +1,2667 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="От физического уровня и IP до TCP, CUBIC, BBR, QUIC и Windows Network Internals.">
+      
+      
+      
+      
+        <link rel="prev" href="../Module-06-Application-Architecture/">
+      
+      
+        <link rel="next" href="../Module-08-Windows-Network-Stack/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Модуль 7. QUIC и HTTP/3 - Полное руководство по TCP</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#7-quic-http3" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Полное руководство по TCP" class="md-header__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Полное руководство по TCP
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Модуль 7. QUIC и HTTP/3
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-tabs__link">
+          
+  
+  
+  Основы сетевого стека
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-04-Congestion-Control/" class="md-tabs__link">
+          
+  
+  
+  Управление трафиком
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../Module-06-Application-Architecture/" class="md-tabs__link">
+          
+  
+  
+  Архитектура приложений
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-08-Windows-Network-Stack/" class="md-tabs__link">
+          
+  
+  
+  Windows Networking
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-10-EVE-NG-Lab/" class="md-tabs__link">
+          
+  
+  
+  Лаборатории
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Полное руководство по TCP" class="md-nav__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Полное руководство по TCP
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Основы сетевого стека
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Основы сетевого стека
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 1. Физический уровень и ядро
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-02-IP-Protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 2. Internet Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-03-TCP-State-Machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 3. TCP State Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Управление трафиком
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Управление трафиком
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-04-Congestion-Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 4. Bufferbloat и Congestion Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-05-Traffic-Control-Tuning-Diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 5. Traffic Control, тюнинг и диагностика
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Lab-Setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лабораторный стенд
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура приложений
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура приложений
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-06-Application-Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 6. Высокопроизводительные сетевые приложения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 7. QUIC и HTTP/3
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 7. QUIC и HTTP/3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#71-tcp-web" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.1: Фундаментальные проблемы TCP для современного Web
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.1: Фундаментальные проблемы TCP для современного Web">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#head-of-line-blocking-hol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Head-of-Line Blocking (HoL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ossification-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ossification: TCP нельзя менять
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handshake-latency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handshake Latency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#72-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.2: Архитектура QUIC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.2: Архитектура QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Главная идея
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#73-handshake-0-rtt-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.3: Handshake — 0-RTT и 1-RTT
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.3: Handshake — 0-RTT и 1-RTT">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Первое соединение: 1 RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#0-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Повторное соединение: 0-RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#74-stream-multiplexing-hol-blocking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.4: Stream Multiplexing без HoL Blocking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.4: Stream Multiplexing без HoL Blocking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Типы стримов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#75-connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.5: Connection Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.5: Connection Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как это работает
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nat-rebinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NAT Rebinding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#76-user-space-congestion-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.6: User-space Congestion Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#77-quic-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.7: Структура QUIC-пакета
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.7: Структура QUIC-пакета">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#long-header-initial-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long Header (Initial, Handshake)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-header-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short Header (после handshake, для данных)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frame-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frame Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#78-http3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.8: HTTP/3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.8: HTTP/3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#http2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Отличия от HTTP/2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QPACK: Сжатие заголовков
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#79-quic-linux-net" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.9: QUIC в Linux и .NET
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.9: QUIC в Linux и .NET">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User-space реализации
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#net-systemnetquic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .NET System.Net.Quic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#710-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.10: Проблемы и критика QUIC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.10: Проблемы и критика QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hardware-offload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Нет hardware offload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шифрование = overhead
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#udp-throttling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UDP throttling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#711-quic-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.11: Когда QUIC, а когда TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.11: Когда QUIC, а когда TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#712-rfc-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.12 RFC — ядро стандарта QUIC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#713-linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.13 Что посмотреть в Linux (и почему тут почти нечего смотреть)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#714-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.14 Как это реализовано в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#715-production-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.15 Production-проблемы
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-0-rtt-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: 0-RTT Handshake
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-http2-vs-http3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: HTTP/2 vs HTTP/3 с потерями
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: Connection Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-c-quic-echo-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: C# QUIC Echo Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-quic-wireshark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: Расшифровка QUIC в Wireshark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Networking
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Windows Networking
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-08-Windows-Network-Stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 8. Windows Server Network Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-09-Windows-Client-Networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 9. Windows Client Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лаборатории
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Лаборатории
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-10-EVE-NG-Lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 10. EVE-NG и Chaos Engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#71-tcp-web" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.1: Фундаментальные проблемы TCP для современного Web
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.1: Фундаментальные проблемы TCP для современного Web">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#head-of-line-blocking-hol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Head-of-Line Blocking (HoL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ossification-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ossification: TCP нельзя менять
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handshake-latency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handshake Latency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#72-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.2: Архитектура QUIC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.2: Архитектура QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Главная идея
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#73-handshake-0-rtt-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.3: Handshake — 0-RTT и 1-RTT
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.3: Handshake — 0-RTT и 1-RTT">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Первое соединение: 1 RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#0-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Повторное соединение: 0-RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#74-stream-multiplexing-hol-blocking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.4: Stream Multiplexing без HoL Blocking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.4: Stream Multiplexing без HoL Blocking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Типы стримов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#75-connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.5: Connection Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.5: Connection Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как это работает
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nat-rebinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NAT Rebinding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#76-user-space-congestion-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.6: User-space Congestion Control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#77-quic-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.7: Структура QUIC-пакета
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.7: Структура QUIC-пакета">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#long-header-initial-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long Header (Initial, Handshake)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-header-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short Header (после handshake, для данных)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frame-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frame Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#78-http3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.8: HTTP/3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.8: HTTP/3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#http2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Отличия от HTTP/2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QPACK: Сжатие заголовков
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#79-quic-linux-net" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.9: QUIC в Linux и .NET
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.9: QUIC в Linux и .NET">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User-space реализации
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#net-systemnetquic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .NET System.Net.Quic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#710-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.10: Проблемы и критика QUIC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.10: Проблемы и критика QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hardware-offload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Нет hardware offload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шифрование = overhead
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#udp-throttling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UDP throttling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#711-quic-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 7.11: Когда QUIC, а когда TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 7.11: Когда QUIC, а когда TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#712-rfc-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.12 RFC — ядро стандарта QUIC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#713-linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.13 Что посмотреть в Linux (и почему тут почти нечего смотреть)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#714-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.14 Как это реализовано в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#715-production-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.15 Production-проблемы
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-0-rtt-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: 0-RTT Handshake
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-http2-vs-http3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: HTTP/2 vs HTTP/3 с потерями
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-connection-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: Connection Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-c-quic-echo-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: C# QUIC Echo Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-quic-wireshark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: Расшифровка QUIC в Wireshark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="7-quic-http3">Модуль 7: QUIC и HTTP/3 — Будущее транспортного уровня<a class="headerlink" href="#7-quic-http3" title="Permanent link">&para;</a></h1>
+<p><em>«TCP создавался, когда интернет был сетью университетов. QUIC создан для мира, где вы переключаетесь с Wi-Fi на LTE, не прерывая звонок».</em></p>
+<hr />
+<h2 id="71-tcp-web">Часть 7.1: Фундаментальные проблемы TCP для современного Web<a class="headerlink" href="#71-tcp-web" title="Permanent link">&para;</a></h2>
+<h3 id="head-of-line-blocking-hol">Head-of-Line Blocking (HoL)<a class="headerlink" href="#head-of-line-blocking-hol" title="Permanent link">&para;</a></h3>
+<p>TCP гарантирует <strong>упорядоченную</strong> доставку <strong>всех</strong> байтов в потоке. HTTP/2 мультиплексирует несколько логических стримов (запросов) поверх одного TCP-соединения.</p>
+<p>Проблема:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>HTTP/2 стримы поверх TCP:
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Stream A: [pkt1] [pkt2] [pkt3]
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Stream B: [pkt4] [pkt5] [pkt6]
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Stream C: [pkt7] [pkt8] [pkt9]
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>TCP видит один поток байтов:
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>[pkt1] [pkt2] [pkt3] [pkt4] [pkt5] [pkt6] [pkt7] [pkt8] [pkt9]
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Если pkt2 потерян:
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>[pkt1] [???] ← TCP ждёт ретрансмита pkt2
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>              ← pkt3, pkt4, pkt5... ВСЕ ЗАБЛОКИРОВАНЫ
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>              ← Stream B и C ждут, хотя ИХ пакеты дошли
+</code></pre></div>
+<p>Один потерянный пакет блокирует <strong>все</strong> стримы, даже те, которых потеря не касается. При 1% потерь HTTP/2 поверх TCP может быть <strong>медленнее</strong>, чем HTTP/1.1 с 6 параллельными соединениями.</p>
+<h3 id="ossification-tcp">Ossification: TCP нельзя менять<a class="headerlink" href="#ossification-tcp" title="Permanent link">&para;</a></h3>
+<p>Middleboxes (файрволлы, NAT, DPI, load balancers) инспектируют TCP-заголовки. Любое изменение формата — и пакет дропается или модифицируется.</p>
+<p>Примеры провалов:
+- <strong>TCP Fast Open</strong>: позволяет отправить данные в SYN. Многие файрволлы дропают SYN с payload. Adoption за 10 лет — менее 1%.
+- <strong>ECN</strong>: middleboxes обнуляют ECN-биты. Развёртывание заняло два десятилетия.
+- <strong>Новые TCP options</strong>: любая новая опция рискует быть отброшенной.</p>
+<p>TCP «закостенел» (ossified) — его невозможно эволюционировать, потому что интернет полон устройств, которые делают предположения о формате TCP.</p>
+<h3 id="handshake-latency">Handshake Latency<a class="headerlink" href="#handshake-latency" title="Permanent link">&para;</a></h3>
+<p>Установка TCP + TLS 1.3:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Клиент                              Сервер
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>   |── SYN ──────────────────────────→|     }
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>   |←───────────────────── SYN+ACK ──|     } 1 RTT (TCP)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>   |── ACK ──────────────────────────→|     }
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   |── ClientHello ──────────────────→|     }
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>   |←──────────── ServerHello+Fin ───|     } 1 RTT (TLS 1.3)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   |── Fin ──────────────────────────→|     }
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>   |── HTTP Request ─────────────────→|     ← Наконец данные!
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>Итого: 2 RTT до первого байта данных
+</code></pre></div>
+<p>На мобильной сети с RTT = 100 мс это 200 мс до первого полезного байта.</p>
+<h3 id="connection-migration">Connection Migration<a class="headerlink" href="#connection-migration" title="Permanent link">&para;</a></h3>
+<p>TCP-соединение идентифицируется кортежем <code>(src_ip, src_port, dst_ip, dst_port)</code>. Сменили IP (Wi-Fi → LTE)? Соединение мертво. Нужно:</p>
+<ol>
+<li>Обнаружить разрыв (таймаут, обычно секунды)</li>
+<li>Новое TCP handshake</li>
+<li>Новое TLS handshake</li>
+<li>Восстановить состояние приложения</li>
+</ol>
+<p>Мобильные пользователи испытывают это постоянно: зашёл в лифт, вышел из зоны Wi-Fi, переключился на другую базовую станцию.</p>
+<hr />
+<h2 id="72-quic">Часть 7.2: Архитектура QUIC<a class="headerlink" href="#72-quic" title="Permanent link">&para;</a></h2>
+<h3 id="_1">Главная идея<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<p>QUIC — это транспортный протокол поверх UDP с интегрированным TLS 1.3.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Классический стек:           QUIC стек:
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>┌──────────────┐            ┌──────────────┐
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│   HTTP/2     │            │   HTTP/3     │
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├──────────────┤            ├──────────────┤
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│   TLS 1.3    │            │    QUIC      │
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├──────────────┤            │ (transport + │
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│    TCP       │            │  TLS 1.3 +   │
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├──────────────┤            │  streams)    │
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>│    IP        │            ├──────────────┤
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>└──────────────┘            │    UDP       │
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                            ├──────────────┤
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                            │    IP        │
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                            └──────────────┘
+</code></pre></div>
+<p>Ключевые свойства:
+- <strong>UDP-based</strong>: проходит через любой middlebox (UDP — «тупой» протокол, никто не инспектирует)
+- <strong>Встроенное шифрование</strong>: TLS 1.3 интегрирован в transport layer. Заголовки тоже частично зашифрованы (anti-ossification)
+- <strong>Connection ID</strong>: соединение идентифицируется не IP:port, а уникальным ID
+- <strong>Множественные стримы</strong>: потеря в одном стриме не блокирует другие</p>
+<hr />
+<h2 id="73-handshake-0-rtt-1-rtt">Часть 7.3: Handshake — 0-RTT и 1-RTT<a class="headerlink" href="#73-handshake-0-rtt-1-rtt" title="Permanent link">&para;</a></h2>
+<h3 id="1-rtt">Первое соединение: 1 RTT<a class="headerlink" href="#1-rtt" title="Permanent link">&para;</a></h3>
+<p>QUIC объединяет transport и crypto handshake в один roundtrip:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Клиент                              Сервер
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   |── Initial (ClientHello) ────────→|
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>   |←──── Initial (ServerHello) ─────|  } 1 RTT
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>   |←──── Handshake (Encrypted) ─────|  }
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>   |── Handshake (Fin) + DATA ───────→|  ← Данные уже в первом RTT!
+</code></pre></div>
+<p>Сравните с TCP+TLS: 2 RTT. QUIC экономит целый roundtrip.</p>
+<h3 id="0-rtt">Повторное соединение: 0-RTT<a class="headerlink" href="#0-rtt" title="Permanent link">&para;</a></h3>
+<p>Если клиент уже подключался к серверу, он кеширует криптографические параметры:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Клиент                              Сервер
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   |── Initial + 0-RTT DATA ────────→|  ← Данные В ПЕРВОМ ЖЕ ПАКЕТЕ!
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>   |←──── Initial + Handshake ───────|
+</code></pre></div>
+<p>Клиент отправляет данные прямо с первым пакетом, не дожидаясь ответа. Для мобильных приложений это революция: переход со страницы на страницу — мгновенный.</p>
+<p><strong>Риск replay-атак:</strong> злоумышленник может перехватить 0-RTT пакет и отправить его заново. Поэтому 0-RTT данные должны быть <strong>идемпотентными</strong> (безопасны при повторной обработке). Серверы должны отслеживать дубликаты.</p>
+<hr />
+<h2 id="74-stream-multiplexing-hol-blocking">Часть 7.4: Stream Multiplexing без HoL Blocking<a class="headerlink" href="#74-stream-multiplexing-hol-blocking" title="Permanent link">&para;</a></h2>
+<p>QUIC поддерживает <strong>независимые стримы</strong> внутри одного соединения:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>QUIC Connection (Connection ID: 0xABCD)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  ├── Stream 0: HTTP Request /index.html
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  ├── Stream 4: HTTP Request /style.css
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  ├── Stream 8: HTTP Request /app.js
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  └── Stream 12: HTTP Request /image.png
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>Потеря пакета из Stream 4:
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  Stream 0: продолжает получать данные ✓
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  Stream 4: ждёт ретрансмита ✗
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  Stream 8: продолжает получать данные ✓
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  Stream 12: продолжает получать данные ✓
+</code></pre></div>
+<p>Каждый стрим имеет свою нумерацию и свой порядок доставки. Потеря в одном не блокирует другие.</p>
+<h3 id="_2">Типы стримов<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Bidirectional (client-initiated)</strong>: ID 0, 4, 8, ... (чётные, клиент)</li>
+<li><strong>Bidirectional (server-initiated)</strong>: ID 1, 5, 9, ... (нечётные, сервер)</li>
+<li><strong>Unidirectional (client-initiated)</strong>: ID 2, 6, 10, ...</li>
+<li><strong>Unidirectional (server-initiated)</strong>: ID 3, 7, 11, ...</li>
+</ul>
+<h3 id="flow-control">Flow Control<a class="headerlink" href="#flow-control" title="Permanent link">&para;</a></h3>
+<p>QUIC реализует flow control на двух уровнях:
+- <strong>Per-stream</strong>: максимальный offset данных, которые получатель готов принять в конкретном стриме
+- <strong>Per-connection</strong>: суммарный лимит по всем стримам</p>
+<p>Это предотвращает ситуацию, когда один жадный стрим забирает все буферы.</p>
+<hr />
+<h2 id="75-connection-migration">Часть 7.5: Connection Migration<a class="headerlink" href="#75-connection-migration" title="Permanent link">&para;</a></h2>
+<h3 id="_3">Как это работает<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>QUIC-соединение привязано к <strong>Connection ID</strong>, а не к IP:port. При смене IP:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>1. Клиент переключился с Wi-Fi на LTE (новый IP)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>2. Клиент отправляет QUIC-пакет с тем же Connection ID, но с нового IP
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>3. Сервер получает пакет, видит знакомый Connection ID
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>4. Сервер верифицирует путь (path validation) для защиты от hijacking
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>5. Соединение продолжает работу без потерь
+</code></pre></div>
+<h3 id="path-validation">Path Validation<a class="headerlink" href="#path-validation" title="Permanent link">&para;</a></h3>
+<p>Для предотвращения атак (отправка пакетов с чужим Connection ID с нового IP):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Сервер → Клиент: PATH_CHALLENGE (случайный токен)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Клиент → Сервер: PATH_RESPONSE (тот же токен)
+</code></pre></div>
+<p>Только после успешной валидации сервер принимает новый путь.</p>
+<h3 id="nat-rebinding">NAT Rebinding<a class="headerlink" href="#nat-rebinding" title="Permanent link">&para;</a></h3>
+<p>Даже без явной миграции, NAT может изменить внешний порт клиента. TCP-соединение при этом ломается. QUIC — нет, потому что ориентируется на Connection ID.</p>
+<hr />
+<h2 id="76-user-space-congestion-control">Часть 7.6: User-space Congestion Control<a class="headerlink" href="#76-user-space-congestion-control" title="Permanent link">&para;</a></h2>
+<p>В TCP congestion control живёт в ядре. Обновление алгоритма = обновление ядра = перезагрузка = downtime.</p>
+<p>QUIC работает в user space. Это значит:
+- <strong>Обновление CC без перезагрузки</strong>: Google деплоит новые алгоритмы <strong>еженедельно</strong>
+- <strong>Per-application CC</strong>: видео-стриминг использует один алгоритм, игры — другой, веб — третий
+- <strong>A/B тестирование</strong>: 50% пользователей на BBR v3, 50% на экспериментальном алгоритме</p>
+<p>QUIC по умолчанию использует те же алгоритмы (BBR, Cubic), но реализованные в приложении, а не в ядре. Это даёт гибкость, которая невозможна с TCP.</p>
+<hr />
+<h2 id="77-quic-">Часть 7.7: Структура QUIC-пакета<a class="headerlink" href="#77-quic-" title="Permanent link">&para;</a></h2>
+<h3 id="long-header-initial-handshake">Long Header (Initial, Handshake)<a class="headerlink" href="#long-header-initial-handshake" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>|1|1|T T|X X X X|   Header Form (1) + Fixed Bit (1) + Type (2) + Reserved (4)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>|                         Version (32)                          |
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>| DCID Len (8)  |
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>|               Destination Connection ID (0..160)              |
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>| SCID Len (8)  |
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>|                 Source Connection ID (0..160)                  |
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</code></pre></div>
+<h3 id="short-header-handshake">Short Header (после handshake, для данных)<a class="headerlink" href="#short-header-handshake" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>+-+-+-+-+-+-+-+-+
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>|0|1|S|R|R|K|P P|   Header Form (0) + Fixed (1) + Spin (1) + Reserved (2) + Key Phase (1) + PN Len (2)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>|               Destination Connection ID (0..160)              |
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>|                      Packet Number (8..32)                    |
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>|                     Protected Payload (*)                     |
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</code></pre></div>
+<p><strong>Packet Number Encryption:</strong> QUIC шифрует даже номер пакета. Зачем? Чтобы middleboxes не могли анализировать паттерны нумерации и делать предположения о протоколе. Это <strong>anti-ossification</strong> мера: если middlebox не может понять формат, он не будет пытаться его «улучшить».</p>
+<h3 id="frame-types">Frame Types<a class="headerlink" href="#frame-types" title="Permanent link">&para;</a></h3>
+<p>Payload QUIC-пакета состоит из фреймов:
+- <strong>STREAM</strong>: данные стрима (основная нагрузка)
+- <strong>ACK</strong>: подтверждения (с поддержкой ranges, как TCP SACK)
+- <strong>CRYPTO</strong>: handshake данные
+- <strong>NEW_CONNECTION_ID</strong>: выдача новых Connection ID (для миграции)
+- <strong>PATH_CHALLENGE / PATH_RESPONSE</strong>: валидация нового пути
+- <strong>PADDING</strong>: заполнение (для обхода MTU ограничений)</p>
+<hr />
+<h2 id="78-http3">Часть 7.8: HTTP/3<a class="headerlink" href="#78-http3" title="Permanent link">&para;</a></h2>
+<p>HTTP/3 — это HTTP-семантика (GET, POST, headers, body) поверх QUIC.</p>
+<h3 id="http2">Отличия от HTTP/2<a class="headerlink" href="#http2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Аспект</th>
+<th>HTTP/2</th>
+<th>HTTP/3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Transport</td>
+<td>TCP</td>
+<td>QUIC (UDP)</td>
+</tr>
+<tr>
+<td>TLS</td>
+<td>Отдельный слой</td>
+<td>Встроен в QUIC</td>
+</tr>
+<tr>
+<td>Multiplexing</td>
+<td>Стримы внутри TCP (HoL)</td>
+<td>Стримы внутри QUIC (без HoL)</td>
+</tr>
+<tr>
+<td>Header compression</td>
+<td>HPACK</td>
+<td>QPACK</td>
+</tr>
+<tr>
+<td>Server Push</td>
+<td>Поддержан</td>
+<td>Поддержан (но редко используется)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="qpack">QPACK: Сжатие заголовков<a class="headerlink" href="#qpack" title="Permanent link">&para;</a></h3>
+<p>HPACK (HTTP/2) полагается на упорядоченную доставку для поддержания синхронизированной таблицы заголовков. В QUIC доставка может быть неупорядоченной.</p>
+<p>QPACK решает это через два однонаправленных стрима:
+- <strong>Encoder stream</strong>: отправитель сообщает об изменениях таблицы
+- <strong>Decoder stream</strong>: получатель подтверждает получение изменений</p>
+<p>Это позволяет сжимать заголовки без зависимости от порядка доставки.</p>
+<hr />
+<h2 id="79-quic-linux-net">Часть 7.9: QUIC в Linux и .NET<a class="headerlink" href="#79-quic-linux-net" title="Permanent link">&para;</a></h2>
+<h3 id="user-space">User-space реализации<a class="headerlink" href="#user-space" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>quiche</strong> (Cloudflare, Rust) — зрелая, production-ready. Используется в Cloudflare CDN.</li>
+<li><strong>msquic</strong> (Microsoft, C) — кросс-платформенная. Основа для .NET QUIC.</li>
+<li><strong>ngtcp2</strong> (C) — лёгкая, для встраивания. Используется в curl.</li>
+<li><strong>Quinn</strong> (Rust) — async/await native.</li>
+</ul>
+<h3 id="net-systemnetquic">.NET System.Net.Quic<a class="headerlink" href="#net-systemnetquic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Сервер (.NET 7+)</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Quic</span><span class="p">;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="kt">var</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">QuicListener</span><span class="p">.</span><span class="n">ListenAsync</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">QuicListenerOptions</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">{</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="n">ListenEndPoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">IPEndPoint</span><span class="p">(</span><span class="n">IPAddress</span><span class="p">.</span><span class="n">Any</span><span class="p">,</span><span class="w"> </span><span class="mi">443</span><span class="p">),</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">    </span><span class="n">ApplicationProtocols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SslApplicationProtocol</span><span class="o">&gt;</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">SslApplicationProtocol</span><span class="p">(</span><span class="s">&quot;h3&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// HTTP/3</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">    </span><span class="n">ConnectionOptionsCallback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">ValueTask</span><span class="p">.</span><span class="n">FromResult</span><span class="p">(</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">QuicServerConnectionOptions</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="w">            </span><span class="n">DefaultStreamErrorCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="w">            </span><span class="n">DefaultCloseErrorCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="w">            </span><span class="n">ServerAuthenticationOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SslServerAuthenticationOptions</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="w">            </span><span class="p">{</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">                </span><span class="n">ServerCertificate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">certificate</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">            </span><span class="p">}</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">        </span><span class="p">})</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="p">});</span>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="c1">// Принимаем соединение</span>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="kt">var</span><span class="w"> </span><span class="n">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">AcceptConnectionAsync</span><span class="p">();</span>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="c1">// Принимаем стрим</span>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="kt">var</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">connection</span><span class="p">.</span><span class="n">AcceptInboundStreamAsync</span><span class="p">();</span>
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a><span class="c1">// Читаем данные</span>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a><span class="kt">var</span><span class="w"> </span><span class="n">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">byte</span><span class="p">[</span><span class="mi">4096</span><span class="p">];</span>
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a><span class="kt">int</span><span class="w"> </span><span class="n">bytesRead</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">ReadAsync</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Клиент</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kt">var</span><span class="w"> </span><span class="n">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">QuicConnection</span><span class="p">.</span><span class="n">ConnectAsync</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">QuicClientConnectionOptions</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="p">{</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="n">RemoteEndPoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">IPEndPoint</span><span class="p">(</span><span class="n">IPAddress</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="s">&quot;1.2.3.4&quot;</span><span class="p">),</span><span class="w"> </span><span class="mi">443</span><span class="p">),</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span><span class="n">DefaultStreamErrorCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span><span class="n">DefaultCloseErrorCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">    </span><span class="n">ClientAuthenticationOptions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SslClientAuthenticationOptions</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">        </span><span class="n">ApplicationProtocols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SslApplicationProtocol</span><span class="o">&gt;</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="nf">SslApplicationProtocol</span><span class="p">(</span><span class="s">&quot;h3&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">        </span><span class="n">TargetHost</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;example.com&quot;</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="p">});</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="c1">// Открываем стрим</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="kt">var</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">connection</span><span class="p">.</span><span class="n">OpenOutboundStreamAsync</span><span class="p">(</span><span class="n">QuicStreamType</span><span class="p">.</span><span class="n">Bidirectional</span><span class="p">);</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="k">await</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">WriteAsync</span><span class="p">(</span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">.</span><span class="n">GetBytes</span><span class="p">(</span><span class="s">&quot;Hello QUIC!&quot;</span><span class="p">));</span>
+</code></pre></div>
+<hr />
+<h2 id="710-quic">Часть 7.10: Проблемы и критика QUIC<a class="headerlink" href="#710-quic" title="Permanent link">&para;</a></h2>
+<h3 id="hardware-offload">Нет hardware offload<a class="headerlink" href="#hardware-offload" title="Permanent link">&para;</a></h3>
+<p>TCP имеет десятилетия оптимизаций в NIC: TSO, GRO, checksum offload. QUIC работает поверх UDP — NIC не понимает, что внутри. Каждый пакет обрабатывается CPU.</p>
+<p><strong>Частичное решение:</strong> UDP GSO (Generic Segmentation Offload) — ядро группирует несколько QUIC-пакетов одного размера и отправляет как один большой UDP. NIC разбивает на сегменты.</p>
+<h3 id="overhead">Шифрование = overhead<a class="headerlink" href="#overhead" title="Permanent link">&para;</a></h3>
+<p>Каждый пакет шифруется/расшифровывается в user space. AES-GCM на современных CPU с AES-NI — ~10 Gbps на одном ядре. Для 100 Gbps нужно 10 ядер только на крипто.</p>
+<h3 id="udp-throttling">UDP throttling<a class="headerlink" href="#udp-throttling" title="Permanent link">&para;</a></h3>
+<p>Некоторые корпоративные сети и провайдеры ограничивают или блокируют UDP-трафик (особенно на нестандартных портах). QUIC обычно использует порт 443, что помогает, но не гарантирует прохождение.</p>
+<h3 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h3>
+<p>tcpdump видит только зашифрованные UDP-пакеты. Содержимое недоступно.</p>
+<p><strong>Решения:</strong>
+- <strong>SSLKEYLOGFILE</strong>: экспорт ключей для расшифровки в Wireshark
+- <strong>qlog</strong>: стандартизированный формат логов QUIC (RFC 9443)
+- <strong>qvis</strong>: визуализатор qlog файлов (web-based)</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Экспорт ключей для Wireshark</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SSLKEYLOGFILE</span><span class="o">=</span>/tmp/quic-keys.log
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># Запускаем приложение с QUIC</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Wireshark: Edit → Preferences → TLS → (Pre)-Master-Secret log filename</span>
+</code></pre></div>
+<hr />
+<h2 id="711-quic-tcp">Часть 7.11: Когда QUIC, а когда TCP<a class="headerlink" href="#711-quic-tcp" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Сценарий</th>
+<th>Рекомендация</th>
+<th>Почему</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Высокая латентность (спутник, межконтинентальные)</td>
+<td>QUIC</td>
+<td>0-RTT экономит сотни мс</td>
+</tr>
+<tr>
+<td>Потери &gt; 1% (мобильные, Wi-Fi)</td>
+<td>QUIC</td>
+<td>Нет HoL blocking между стримами</td>
+</tr>
+<tr>
+<td>Мобильные клиенты (миграция)</td>
+<td>QUIC</td>
+<td>Connection Migration</td>
+</tr>
+<tr>
+<td>Data center (low latency, low loss)</td>
+<td>TCP</td>
+<td>Hardware offload, низкий overhead</td>
+</tr>
+<tr>
+<td>100 Gbps+ throughput</td>
+<td>TCP</td>
+<td>TSO/GRO offload критичен</td>
+</tr>
+<tr>
+<td>Legacy-инфраструктура</td>
+<td>TCP</td>
+<td>Совместимость, tooling</td>
+</tr>
+<tr>
+<td>Веб-приложения</td>
+<td>QUIC</td>
+<td>HTTP/3 — будущий стандарт</td>
+</tr>
+<tr>
+<td>Сеть блокирует UDP</td>
+<td>TCP (fallback)</td>
+<td>Happy Eyeballs v2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Практический подход:</strong> попробуй QUIC, fallback на TCP. Это называется <strong>Happy Eyeballs v2</strong> — клиент пробует QUIC и TCP параллельно, использует тот, что ответил первым.</p>
+<hr />
+<hr />
+<h3 id="712-rfc-quic">7.12 RFC — ядро стандарта QUIC<a class="headerlink" href="#712-rfc-quic" title="Permanent link">&para;</a></h3>
+<p>QUIC — редкий случай в книге, когда стандарт моложе большинства практикующих инженеров (финализирован в мае 2021), и весь модуль держится на этих документах:</p>
+<ul>
+<li><strong>RFC 9000</strong> — QUIC: A UDP-Based Multiplexed and Secure Transport (основной транспортный протокол — то, что разобрано в 7.2–7.7).</li>
+<li><strong>RFC 9001</strong> — Using TLS to Secure QUIC (крипто-рукопожатие, 7.3).</li>
+<li><strong>RFC 9002</strong> — QUIC Loss Detection and Congestion Control (user-space congestion control, 7.6 — обрати внимание: здесь QUIC ОБЯЗАН реализовать то, что в TCP делает ядро, отсюда и упомянутый в 7.10 CPU overhead).</li>
+<li><strong>RFC 9114</strong> — HTTP/3 (7.8).</li>
+<li><strong>RFC 9204</strong> — QPACK: Field Compression for HTTP/3 (7.8, отличие от HPACK).</li>
+<li><strong>RFC 9443</strong> — qlog (уже процитирован, но это дополнительный формат логирования, не транспорт — стоит явно отделить от четвёрки выше).</li>
+</ul>
+<p>Полезная деталь для читателя: в отличие от TCP (RFC 9293, единый документ), QUIC изначально спроектирован модульно — транспорт, крипто и congestion control разнесены по разным RFC. Это отражает то, что сама IETF QUIC WG сознательно делала протокол расширяемым с первого дня, а не по историческим причинам, как у TCP.</p>
+<hr />
+<h3 id="713-linux">7.13 Что посмотреть в Linux (и почему тут почти нечего смотреть)<a class="headerlink" href="#713-linux" title="Permanent link">&para;</a></h3>
+<p>Честно: аналога <code>ss -ti</code> для QUIC <strong>не существует</strong>, и это не пробел в тулинге, а прямое следствие архитектуры — QUIC-соединение не имеет представления в ядре, всё состояние живёт в user-space библиотеке (msquic, quiche, quic-go).</p>
+<p>Что реально доступно на уровне ОС:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Видно только сам UDP-сокет — без ретрансмиссий, cwnd, RTT</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>ss<span class="w"> </span>-u<span class="w"> </span>-a
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Через eBPF можно трейсить входящие/исходящие UDP-датаграммы,</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># но интерпретация QUIC-фреймов внутри — уже задача userspace-библиотеки</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>bpftrace<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;kprobe:udp_sendmsg { printf(&quot;pid %d sending UDP\n&quot;, pid); }&#39;</span>
+</code></pre></div>
+<p>Вся содержательная диагностика (retransmissions, RTT, cwnd, packet loss) переносится из ядра в приложение — отсюда критическая важность <code>qlog</code> (7.10): это не «ещё один формат логов», а <strong>единственный</strong> способ увидеть внутреннее состояние QUIC-соединения, потому что стандартных kernel-инструментов для этого не существует в принципе.</p>
+<hr />
+<h3 id="714-windows">7.14 Как это реализовано в Windows<a class="headerlink" href="#714-windows" title="Permanent link">&para;</a></h3>
+<p>QUIC на Windows — часть <strong>msquic</strong> (открытая библиотека Microsoft, та же, что использует и <code>System.Net.Quic</code> в .NET, и сам Windows для SMB over QUIC).</p>
+<ul>
+<li><strong>Требования по версии ОС</strong> — полноценная поддержка QUIC с TLS 1.3 в режиме ядра (Schannel) требует <strong>Windows Server 2022 / Windows 11</strong> и новее. На более старых версиях <code>System.Net.Quic</code> в .NET либо не работает, либо требует OpenSSL-based fallback — это стоит проверить перед деплоем сервиса с QUIC на Windows Server 2019.</li>
+<li><strong>msquic поддерживает два TLS-провайдера</strong>: Schannel (нативный, только Windows) и OpenSSL (кроссплатформенный). На Linux/.NET msquic всегда собран с OpenSSL — то есть поведение TLS-стека реально отличается между ОС, не только по производительности, но и по набору доступных cipher suite.</li>
+<li><strong>Диагностика</strong> — ETW-провайдер <code>Microsoft-Quic</code> даёт трейсинг на уровне соединений, стримов и потерь пакетов, аналогично тому, как <code>qlog</code> работает в quiche/quic-go. Смотрится через WPA (см. Модуль 8, 8.9) так же, как обычный TCP ETW-трейс.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c"># Проверка версии Windows на поддержку kernel-mode QUIC (Schannel)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nb">Get-ComputerInfo</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">WindowsProductName</span><span class="p">,</span> <span class="n">OsVersion</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c"># ETW-трейсинг QUIC через msquic provider</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Quic</span> <span class="n">capture</span><span class="p">=</span><span class="n">yes</span> <span class="n">tracefile</span><span class="p">=</span><span class="n">c</span><span class="p">:\</span><span class="n">quic</span><span class="p">.</span><span class="n">etl</span>
+</code></pre></div>
+<hr />
+<h3 id="715-production-">7.15 Production-проблемы<a class="headerlink" href="#715-production-" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>UDP GSO как единственная точка обхода отсутствия hardware offload.</strong> Без <code>UDP_SEGMENT</code> (GSO для UDP, доступен в Linux с 4.18+) throughput QUIC-сервера на высоких нагрузках упирается в CPU задолго до упора в NIC — Cloudflare и Fastly публично описывали, что именно отсутствие offload было причиной перехода части инфраструктуры на io_uring/AF_XDP для QUIC-терминации, а не просто масштабирование по ядрам.</li>
+<li><strong>Anti-amplification limit (RFC 9000 §8.1) как источник обрывов в асимметричных сетях.</strong> Пока клиент не подтвердит адрес (address validation), сервер обязан ограничить объём ответа троекратным размером полученных от клиента данных — это защита от amplification-атак, но на практике при потере первого клиентского пакета в системах со спутниковым/geo-стационарным линком это может приводить к неожиданным задержкам старта, которые выглядят как "баг", а на деле — требование стандарта безопасности.</li>
+<li><strong>Ossification со стороны middlebox всё ещё встречается.</strong> Часть корпоративных firewall и DPI-систем блокирует или троттлит UDP/443, заставляя полагаться на Happy Eyeballs v2 (7.11, уже описан) как обязательный, а не опциональный fallback — то есть в production нельзя просто "включить QUIC", всегда нужен TCP-путь наготове.</li>
+</ul>
+<hr />
+<h2 id="_4">Практическое задание<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="1-0-rtt-handshake">Задача 1: 0-RTT Handshake<a class="headerlink" href="#1-0-rtt-handshake" title="Permanent link">&para;</a></h3>
+<p>Установите Cloudflare quiche (<code>cargo build --examples</code>). Запустите сервер и клиент. Измерьте время первого подключения (1-RTT) и повторного (0-RTT). Сравните с TCP+TLS (<code>openssl s_time</code>).</p>
+<h3 id="2-http2-vs-http3">Задача 2: HTTP/2 vs HTTP/3 с потерями<a class="headerlink" href="#2-http2-vs-http3" title="Permanent link">&para;</a></h3>
+<p>Используя стенд из модуля 3:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># На роутере</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>tc<span class="w"> </span>qdisc<span class="w"> </span>add<span class="w"> </span>dev<span class="w"> </span>ens34<span class="w"> </span>root<span class="w"> </span>netem<span class="w"> </span>loss<span class="w"> </span><span class="m">1</span>%
+</code></pre></div>
+<p>Скачайте страницу с 20 ресурсами через HTTP/2 (TCP) и HTTP/3 (QUIC). Измерьте Page Load Time. При 1% потерь HTTP/3 должен быть значительно быстрее.</p>
+<h3 id="3-connection-migration">Задача 3: Connection Migration<a class="headerlink" href="#3-connection-migration" title="Permanent link">&para;</a></h3>
+<p>Запустите QUIC-загрузку большого файла. Во время передачи смените IP клиента:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ip<span class="w"> </span>addr<span class="w"> </span>del<span class="w"> </span><span class="m">192</span>.168.60.10/24<span class="w"> </span>dev<span class="w"> </span>eth0
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>ip<span class="w"> </span>addr<span class="w"> </span>add<span class="w"> </span><span class="m">192</span>.168.60.11/24<span class="w"> </span>dev<span class="w"> </span>eth0
+</code></pre></div>
+<p>Проверьте: продолжилась ли загрузка без разрыва?</p>
+<h3 id="4-c-quic-echo-server">Задача 4: C# QUIC Echo Server<a class="headerlink" href="#4-c-quic-echo-server" title="Permanent link">&para;</a></h3>
+<p>Напишите echo-сервер на C# с <code>System.Net.Quic</code> (.NET 7+). Клиент отправляет строку, сервер возвращает. Измерьте P99 латентность при 1000 concurrent стримов.</p>
+<h3 id="5-quic-wireshark">Задача 5: Расшифровка QUIC в Wireshark<a class="headerlink" href="#5-quic-wireshark" title="Permanent link">&para;</a></h3>
+<p>Настройте <code>SSLKEYLOGFILE</code>. Захватите QUIC-трафик. Расшифруйте в Wireshark. Найдите: STREAM frames, ACK frames, Connection ID. Сравните с TCP+TLS захватом того же контента.</p>
+<hr />
+<p><strong>Это завершающий модуль курса.</strong> Вы прошли путь от электрического сигнала на проводе до QUIC-стримов в user space. Используйте лабораторный стенд для экспериментов и помните: настоящий инженер не верит документации — он проверяет всё на практике.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>

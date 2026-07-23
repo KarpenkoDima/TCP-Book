@@ -1,0 +1,3175 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="От физического уровня и IP до TCP, CUBIC, BBR, QUIC и Windows Network Internals.">
+      
+      
+      
+      
+        <link rel="prev" href="../Module-01-Physical-Layer-and-Kernel/">
+      
+      
+        <link rel="next" href="../Module-03-TCP-State-Machine/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Модуль 2. Internet Protocol - Полное руководство по TCP</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#2-internet-protocol" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Полное руководство по TCP" class="md-header__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Полное руководство по TCP
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Модуль 2. Internet Protocol
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-tabs__link">
+          
+  
+  
+  Основы сетевого стека
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-04-Congestion-Control/" class="md-tabs__link">
+          
+  
+  
+  Управление трафиком
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-06-Application-Architecture/" class="md-tabs__link">
+          
+  
+  
+  Архитектура приложений
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-08-Windows-Network-Stack/" class="md-tabs__link">
+          
+  
+  
+  Windows Networking
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-10-EVE-NG-Lab/" class="md-tabs__link">
+          
+  
+  
+  Лаборатории
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Полное руководство по TCP" class="md-nav__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Полное руководство по TCP
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Основы сетевого стека
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Основы сетевого стека
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 1. Физический уровень и ядро
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 2. Internet Protocol
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 2. Internet Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#21-ip-header-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.1: IP Header — 20 байт, которые правят интернетом
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.1: IP Header — 20 байт, которые правят интернетом">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Структура заголовка в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip_rcv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ip_rcv(): Первая линия обороны
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tos-dscp-ecn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TOS / DSCP / ECN: Битовое поле приоритетов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ttl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTL: Защита от бесконечных петель
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-ip-checksum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.2: IP Checksum — Быстрая математика
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.2: IP Checksum — Быстрая математика">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Алгоритм: одна сумма дополнений
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Инкрементальное обновление
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wireshark-checksums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему Wireshark показывает «неправильные» checksums
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-mtu-1500" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.3: Фрагментация — Почему MTU 1500 не случайность
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.3: Фрагментация — Почему MTU 1500 не случайность">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему фрагментация — катастрофа
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-mtu-discovery-pmtud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path MTU Discovery (PMTUD)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фрагментация в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reassembly-ip_defrag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reassembly: ip_defrag()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtu-1500" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MTU 1500: Почему именно это число
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.4: Routing — Как ядро решает, куда слать пакет
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.4: Routing — Как ядро решает, куда слать пакет">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fib-forwarding-information-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FIB: Forwarding Information Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trie-hash-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему trie, а не hash table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lookup путь
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#policy-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy Routing: Несколько таблиц
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-ip-forwarding-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.5: IP Forwarding Path — Полный маршрут пакета
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.5: IP Forwarding Path — Полный маршрут пакета">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ascii" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ASCII диаграмма
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip_forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ip_forward(): Ключевая функция
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conntrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conntrack: Цена отслеживания соединений
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#26-ip-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.6: IP Options — Редкие, но опасные
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.6: IP Options — Редкие, но опасные">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Типы
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему они убивают производительность
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#27-multicast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.7: Multicast
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.7: Multicast">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Основы
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kernel-multicast-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kernel multicast routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multicast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Когда multicast важен
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#28-ipsec-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.8: IPsec Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.8: IPsec Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#xfrm-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        XFRM Framework
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#esp-encapsulating-security-payload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP (Encapsulating Security Payload)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#29-ipv6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.9: IPv6 — Не «будущее», а настоящее
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.9: IPv6 — Не «будущее», а настоящее">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-header-vs-ipv4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6 Header vs IPv4: Радикальное упрощение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сравнение заголовков
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checksum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Отсутствие Checksum — осознанное решение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extension-headers-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Headers: Цепочка вместо Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фрагментация в IPv6: Радикально другой подход
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow Label: Микрооптимизация для роутеров
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-linux-dual-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6 в Linux: Dual Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ndp-arp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NDP: Замена ARP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6-специфичные проблемы в production
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-craft-ip-scapy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: Craft IP-пакетов с scapy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-trace-ip_rcv-bpftrace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: Trace ip_rcv() с bpftrace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: Эксперимент с фрагментацией
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-policy-routing-isp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: Policy Routing с двумя ISP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-routing-lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: Производительность routing lookup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-03-TCP-State-Machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 3. TCP State Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Управление трафиком
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Управление трафиком
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-04-Congestion-Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 4. Bufferbloat и Congestion Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-05-Traffic-Control-Tuning-Diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 5. Traffic Control, тюнинг и диагностика
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Lab-Setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лабораторный стенд
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура приложений
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура приложений
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-06-Application-Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 6. Высокопроизводительные сетевые приложения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-07-QUIC-HTTP3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 7. QUIC и HTTP/3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Networking
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Windows Networking
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-08-Windows-Network-Stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 8. Windows Server Network Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-09-Windows-Client-Networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 9. Windows Client Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лаборатории
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Лаборатории
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-10-EVE-NG-Lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 10. EVE-NG и Chaos Engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#21-ip-header-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.1: IP Header — 20 байт, которые правят интернетом
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.1: IP Header — 20 байт, которые правят интернетом">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Структура заголовка в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip_rcv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ip_rcv(): Первая линия обороны
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tos-dscp-ecn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TOS / DSCP / ECN: Битовое поле приоритетов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ttl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTL: Защита от бесконечных петель
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-ip-checksum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.2: IP Checksum — Быстрая математика
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.2: IP Checksum — Быстрая математика">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Алгоритм: одна сумма дополнений
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Инкрементальное обновление
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wireshark-checksums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему Wireshark показывает «неправильные» checksums
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-mtu-1500" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.3: Фрагментация — Почему MTU 1500 не случайность
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.3: Фрагментация — Почему MTU 1500 не случайность">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему фрагментация — катастрофа
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-mtu-discovery-pmtud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path MTU Discovery (PMTUD)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фрагментация в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reassembly-ip_defrag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reassembly: ip_defrag()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mtu-1500" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MTU 1500: Почему именно это число
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.4: Routing — Как ядро решает, куда слать пакет
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.4: Routing — Как ядро решает, куда слать пакет">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fib-forwarding-information-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FIB: Forwarding Information Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trie-hash-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему trie, а не hash table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lookup путь
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#policy-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy Routing: Несколько таблиц
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-ip-forwarding-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.5: IP Forwarding Path — Полный маршрут пакета
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.5: IP Forwarding Path — Полный маршрут пакета">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ascii" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ASCII диаграмма
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip_forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ip_forward(): Ключевая функция
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conntrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conntrack: Цена отслеживания соединений
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#26-ip-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.6: IP Options — Редкие, но опасные
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.6: IP Options — Редкие, но опасные">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Типы
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему они убивают производительность
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#27-multicast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.7: Multicast
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.7: Multicast">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Основы
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kernel-multicast-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kernel multicast routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multicast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Когда multicast важен
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#28-ipsec-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.8: IPsec Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.8: IPsec Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#xfrm-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        XFRM Framework
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#esp-encapsulating-security-payload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP (Encapsulating Security Payload)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#29-ipv6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 2.9: IPv6 — Не «будущее», а настоящее
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 2.9: IPv6 — Не «будущее», а настоящее">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-header-vs-ipv4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6 Header vs IPv4: Радикальное упрощение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сравнение заголовков
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checksum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Отсутствие Checksum — осознанное решение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extension-headers-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Headers: Цепочка вместо Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фрагментация в IPv6: Радикально другой подход
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow Label: Микрооптимизация для роутеров
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-linux-dual-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6 в Linux: Dual Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ndp-arp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NDP: Замена ARP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IPv6-специфичные проблемы в production
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-craft-ip-scapy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: Craft IP-пакетов с scapy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-trace-ip_rcv-bpftrace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: Trace ip_rcv() с bpftrace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: Эксперимент с фрагментацией
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-policy-routing-isp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: Policy Routing с двумя ISP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-routing-lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: Производительность routing lookup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="2-internet-protocol">Модуль 2: Internet Protocol — Анатомия сетевого уровня<a class="headerlink" href="#2-internet-protocol" title="Permanent link">&para;</a></h1>
+<p><em>«IP — это не просто адрес в заголовке. Это целая машина принятия решений, работающая на каждом роутере между вами и сервером».</em></p>
+<hr />
+<h2 id="21-ip-header-20">Часть 2.1: IP Header — 20 байт, которые правят интернетом<a class="headerlink" href="#21-ip-header-20" title="Permanent link">&para;</a></h2>
+<p>Каждый слышал про IP-адреса. Но давайте разберём, что <strong>на самом деле</strong> происходит, когда ядро обрабатывает IP-пакет.</p>
+<h3 id="_1">Структура заголовка в ядре<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// include/uapi/linux/ip.h</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#if defined(__LITTLE_ENDIAN_BITFIELD)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">ihl</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span><span class="w">        </span><span class="c1">// Internet Header Length (в 32-bit словах)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">            </span><span class="nl">version</span><span class="p">:</span><span class="mi">4</span><span class="p">;</span><span class="w">     </span><span class="c1">// Версия протокола (4 для IPv4)</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="cp">#elif defined (__BIG_ENDIAN_BITFIELD)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">version</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">            </span><span class="nl">ihl</span><span class="p">:</span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="cp">#endif</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">tos</span><span class="p">;</span><span class="w">          </span><span class="c1">// Type of Service (DSCP + ECN)</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="n">__be16</span><span class="w">  </span><span class="n">tot_len</span><span class="p">;</span><span class="w">      </span><span class="c1">// Общая длина пакета (header + data)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="n">__be16</span><span class="w">  </span><span class="n">id</span><span class="p">;</span><span class="w">           </span><span class="c1">// Identification для фрагментации</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="n">__be16</span><span class="w">  </span><span class="n">frag_off</span><span class="p">;</span><span class="w">     </span><span class="c1">// Flags (3 бита) + Fragment Offset (13 бит)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">ttl</span><span class="p">;</span><span class="w">          </span><span class="c1">// Time To Live</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">protocol</span><span class="p">;</span><span class="w">     </span><span class="c1">// Протокол верхнего уровня (6=TCP, 17=UDP, 1=ICMP)</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="n">__sum16</span><span class="w"> </span><span class="n">check</span><span class="p">;</span><span class="w">        </span><span class="c1">// Header checksum</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="n">__be32</span><span class="w">  </span><span class="n">saddr</span><span class="p">;</span><span class="w">        </span><span class="c1">// Source IP</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="n">__be32</span><span class="w">  </span><span class="n">daddr</span><span class="p">;</span><span class="w">        </span><span class="c1">// Destination IP</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="c1">// За этим могут следовать IP Options (до 40 байт)</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="p">};</span>
+</code></pre></div>
+<p>Обратите внимание на <code>#if defined(__LITTLE_ENDIAN_BITFIELD)</code> — порядок битовых полей <code>ihl</code> и <code>version</code> зависит от endianness процессора. На x86 (little-endian) <code>ihl</code> идёт первым в памяти.</p>
+<h3 id="ip_rcv">ip_rcv(): Первая линия обороны<a class="headerlink" href="#ip_rcv" title="Permanent link">&para;</a></h3>
+<p>Когда пакет прибывает из сети и доходит до IP-уровня, вызывается <code>ip_rcv()</code>. Эта функция — параноидальный валидатор:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// net/ipv4/ip_input.c</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ip_rcv</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">net_device</span><span class="w"> </span><span class="o">*</span><span class="n">dev</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">           </span><span class="k">struct</span><span class="w"> </span><span class="nc">packet_type</span><span class="w"> </span><span class="o">*</span><span class="n">pt</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">net_device</span><span class="w"> </span><span class="o">*</span><span class="n">orig_dev</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">{</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="p">;</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">len</span><span class="p">;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="c1">// Проверяем, что пакет достаточно длинный для минимального IP заголовка</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">pskb_may_pull</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="p">)))</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">inhdr_error</span><span class="p">;</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="c1">// Версия должна быть 4</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">version</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">inhdr_error</span><span class="p">;</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="c1">// IHL (длина заголовка) должна быть &gt;= 5 (5 × 4 = 20 байт)</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ihl</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">5</span><span class="p">)</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">inhdr_error</span><span class="p">;</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">    </span><span class="c1">// Проверяем, что в пакете действительно есть столько данных,</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="c1">// сколько заявлено в IHL</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">pskb_may_pull</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ihl</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4</span><span class="p">))</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">inhdr_error</span><span class="p">;</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">    </span><span class="c1">// ВАЖНО: пересчитываем указатель iph, т.к. pskb_may_pull</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">    </span><span class="c1">// мог переместить данные в линейную часть sk_buff</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">    </span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">    </span><span class="c1">// Проверяем tot_len: пакет не может быть короче заявленного</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">    </span><span class="n">len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ntohs</span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">tot_len</span><span class="p">);</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">skb</span><span class="o">-&gt;</span><span class="n">len</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ihl</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4</span><span class="p">))</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">inhdr_error</span><span class="p">;</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">    </span><span class="c1">// Проверяем checksum заголовка</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ip_fast_csum</span><span class="p">((</span><span class="n">u8</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">iph</span><span class="p">,</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ihl</span><span class="p">))</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">csum_error</span><span class="p">;</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">    </span><span class="c1">// Обрезаем sk_buff до реальной длины IP-пакета</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="w">    </span><span class="c1">// (Ethernet может добавить padding для минимального размера кадра)</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">    </span><span class="n">__skb_trim</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="w">    </span><span class="c1">// Передаём в NF_INET_PRE_ROUTING (netfilter hook)</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">NF_HOOK</span><span class="p">(</span><span class="n">NFPROTO_IPV4</span><span class="p">,</span><span class="w"> </span><span class="n">NF_INET_PRE_ROUTING</span><span class="p">,</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a><span class="w">                   </span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">dev</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">ip_rcv_finish</span><span class="p">);</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a><span class="nl">inhdr_error</span><span class="p">:</span>
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a><span class="w">    </span><span class="n">__IP_INC_STATS</span><span class="p">(</span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="n">IPSTATS_MIB_INHDRERRORS</span><span class="p">);</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a><span class="nl">drop</span><span class="p">:</span>
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a><span class="w">    </span><span class="n">kfree_skb</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">NET_RX_DROP</span><span class="p">;</span>
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a><span class="p">}</span>
+</code></pre></div>
+<p>Каждая проверка — это защита от malformed пакетов. В интернете <strong>любое</strong> поле IP-заголовка может быть подделано. Ядро проверяет всё: версию, длину, контрольную сумму. Только после этого пакет допускается дальше.</p>
+<h3 id="tos-dscp-ecn">TOS / DSCP / ECN: Битовое поле приоритетов<a class="headerlink" href="#tos-dscp-ecn" title="Permanent link">&para;</a></h3>
+<p>Поле <code>tos</code> (8 бит) сегодня разделено на две части:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a> 0   1   2   3   4   5   6   7
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>+---+---+---+---+---+---+---+---+
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>|         DSCP (6 бит)    | ECN |
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>+---+---+---+---+---+---+---+---+
+</code></pre></div>
+<p><strong>DSCP (Differentiated Services Code Point)</strong> — первые 6 бит. Используется для приоритезации трафика на роутерах (QoS). Например, VoIP-трафик маркируется DSCP=46 (EF — Expedited Forwarding).</p>
+<p><strong>ECN (Explicit Congestion Notification)</strong> — последние 2 бита. Революционная идея: вместо дропа пакета роутер <strong>помечает</strong> его. Два бита:
+- <code>00</code> — Non ECN-Capable Transport
+- <code>01</code> или <code>10</code> — ECN Capable Transport (ECT)
+- <code>11</code> — Congestion Experienced (CE)</p>
+<p>Когда BBR или DCTCP выставляют ECT-бит, роутер, видя нарастающую очередь, помечает пакет CE вместо дропа. Получатель возвращает эту информацию отправителю через TCP, и тот снижает скорость <strong>без потери пакета</strong>.</p>
+<p><strong>Проблема:</strong> многие middleboxes (файрволлы, NAT) сбрасывают пакеты с ECN или обнуляют эти биты, считая их «подозрительными». Именно поэтому ECN до сих пор не стал стандартом.</p>
+<h3 id="ttl">TTL: Защита от бесконечных петель<a class="headerlink" href="#ttl" title="Permanent link">&para;</a></h3>
+<p>TTL (Time To Live) — счётчик, декрементируемый на каждом хопе. При TTL=0 пакет дропается.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// net/ipv4/ip_forward.c</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ip_forward</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">{</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="c1">// Декрементируем TTL</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ip_decrease_ttl</span><span class="p">(</span><span class="n">iph</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">        </span><span class="c1">// TTL истёк — генерируем ICMP Time Exceeded</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="n">icmp_send</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_TIME_EXCEEDED</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_EXC_TTL</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">drop</span><span class="p">;</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="c1">// ... routing decision, netfilter hooks ...</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">}</span>
+</code></pre></div>
+<p>Функция <code>ip_decrease_ttl()</code> содержит элегантную оптимизацию:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">ip_decrease_ttl</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="p">{</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">check</span><span class="p">;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="c1">// Уменьшаем TTL</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ttl</span><span class="o">--</span><span class="p">;</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="c1">// Инкрементальное обновление checksum</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="c1">// Вместо пересчёта всего заголовка (десятки инструкций),</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="c1">// обновляем только дельту от изменения TTL (2-3 инструкции)</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="n">check</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="p">(</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)</span><span class="n">htons</span><span class="p">(</span><span class="mh">0x0100</span><span class="p">);</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">__force</span><span class="w"> </span><span class="n">__sum16</span><span class="p">)(</span><span class="n">check</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mh">0xFFFF</span><span class="p">));</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ttl</span><span class="p">;</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="p">}</span>
+</code></pre></div>
+<p>Инкрементальное обновление checksum критично на высокоскоростных роутерах. При 10 Mpps разница между полным пересчётом и инкрементальным — это проценты CPU.</p>
+<hr />
+<h2 id="22-ip-checksum">Часть 2.2: IP Checksum — Быстрая математика<a class="headerlink" href="#22-ip-checksum" title="Permanent link">&para;</a></h2>
+<h3 id="_2">Алгоритм: одна сумма дополнений<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p>IP checksum — это one's complement sum (сумма в дополнительном коде) всех 16-битных слов заголовка, с инверсией результата.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Упрощённая версия</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="n">__sum16</span><span class="w"> </span><span class="nf">ip_fast_csum</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="p">,</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">ihl</span><span class="p">)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">{</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">u16</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iph</span><span class="p">;</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ihl</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">  </span><span class="c1">// ihl в 32-bit словах, нам нужны 16-bit</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">        </span><span class="n">sum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="o">*</span><span class="n">buf</span><span class="o">++</span><span class="p">;</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">        </span><span class="n">count</span><span class="o">--</span><span class="p">;</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="c1">// Сворачиваем carry</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">sum</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">sum</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xFFFF</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">sum</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">~</span><span class="n">sum</span><span class="p">;</span><span class="w">  </span><span class="c1">// Инверсия</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="p">}</span>
+</code></pre></div>
+<p>На практике ядро использует ассемблерные оптимизации для каждой архитектуры (x86, ARM). Функция <code>ip_fast_csum()</code> на x86 развёрнута в цикл из <code>adc</code> инструкций.</p>
+<h3 id="_3">Инкрементальное обновление<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>Когда меняется только одно поле (TTL при форвардинге), нет смысла пересчитывать весь заголовок. RFC 1624 описывает инкрементальное обновление:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>new_checksum = old_checksum - old_value + new_value
+</code></pre></div>
+<p>Это работает, потому что one's complement sum — ассоциативная операция.</p>
+<h3 id="wireshark-checksums">Почему Wireshark показывает «неправильные» checksums<a class="headerlink" href="#wireshark-checksums" title="Permanent link">&para;</a></h3>
+<p>При захвате трафика на отправляющей машине вы часто видите <code>Header checksum: incorrect</code>. Это не ошибка — это <strong>checksum offload</strong>. Ядро не считает checksum, а передаёт эту работу NIC. Wireshark видит пакет до того, как NIC заполнит поле.</p>
+<p>Проверить: <code>ethtool -k eth0 | grep tx-checksum</code>.</p>
+<hr />
+<h2 id="23-mtu-1500">Часть 2.3: Фрагментация — Почему MTU 1500 не случайность<a class="headerlink" href="#23-mtu-1500" title="Permanent link">&para;</a></h2>
+<h3 id="_4">Почему фрагментация — катастрофа<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>IP может фрагментировать пакеты, если они больше MTU канала. Но это <strong>убивает</strong> производительность:</p>
+<ul>
+<li>Reassembly требует буферизации всех фрагментов (memory pressure)</li>
+<li>Потеря <strong>одного</strong> фрагмента = потеря <strong>всего</strong> пакета = повторная передача <strong>всего</strong></li>
+<li>Промежуточные роутеры тратят ресурсы на дополнительную работу</li>
+<li>Фрагменты легко использовать для атак (fragment overlap attacks)</li>
+</ul>
+<h3 id="path-mtu-discovery-pmtud">Path MTU Discovery (PMTUD)<a class="headerlink" href="#path-mtu-discovery-pmtud" title="Permanent link">&para;</a></h3>
+<p>TCP решает проблему элегантно: не фрагментировать вообще. При отправке TCP выставляет <strong>Don't Fragment (DF)</strong> бит:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// net/ipv4/tcp_output.c (упрощённо)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">tcp_transmit_skb</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="p">{</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">inet_sock</span><span class="w"> </span><span class="o">*</span><span class="n">inet</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">inet_sk</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="p">;</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="c1">// Выставляем DF для Path MTU Discovery</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">inet</span><span class="o">-&gt;</span><span class="n">pmtudisc</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">IP_PMTUDISC_DO</span><span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">        </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">frag_off</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">htons</span><span class="p">(</span><span class="n">IP_DF</span><span class="p">);</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span><span class="c1">// ...</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="p">}</span>
+</code></pre></div>
+<p>Когда пакет с DF встречает канал с меньшим MTU, роутер <strong>дропает</strong> его и отправляет ICMP Fragmentation Needed (тип 3, код 4) обратно. TCP получает это, снижает MSS, и следующие пакеты будут меньше.</p>
+<p><strong>Проблема:</strong> многие файрволлы блокируют ICMP. Если ICMP Fragmentation Needed не доходит, TCP не знает о проблеме, и соединение «зависает» — это называется <strong>PMTU black hole</strong>.</p>
+<h3 id="_5">Фрагментация в ядре<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<p>Для UDP (без PMTUD) фрагментация неизбежна:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// net/ipv4/ip_output.c (упрощённо)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ip_fragment</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">net</span><span class="w"> </span><span class="o">*</span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">                </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">mtu</span><span class="p">,</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">                </span><span class="kt">int</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">output</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">net</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="p">))</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">{</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">hlen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ihl</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w">     </span><span class="c1">// Длина IP-заголовка</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">left</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">skb</span><span class="o">-&gt;</span><span class="n">len</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">hlen</span><span class="p">;</span><span class="w">   </span><span class="c1">// Данные для фрагментации</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w">                  </span><span class="c1">// Смещение в данных</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span><span class="c1">// Offset должен быть кратен 8 байтам (legacy ограничение)</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">fraglen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="n">mtu</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">hlen</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="o">~</span><span class="mi">7</span><span class="p">);</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">left</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">        </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">left</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">fraglen</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">fraglen</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">left</span><span class="p">;</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb2</span><span class="p">;</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">        </span><span class="c1">// Создаём новый sk_buff для фрагмента</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">        </span><span class="n">skb2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alloc_skb</span><span class="p">(</span><span class="n">len</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">hlen</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">...);</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">        </span><span class="c1">// Копируем IP-заголовок</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">        </span><span class="n">skb_copy_from_linear_data</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">skb_network_header</span><span class="p">(</span><span class="n">skb2</span><span class="p">),</span><span class="w"> </span><span class="n">hlen</span><span class="p">);</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">        </span><span class="c1">// Заполняем поля фрагмента</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="w">        </span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb2</span><span class="p">);</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="w">        </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">frag_off</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">htons</span><span class="p">(</span><span class="n">ptr</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span><span class="w">  </span><span class="c1">// Смещение в 8-байтных блоках</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">left</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">fraglen</span><span class="p">)</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">            </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">frag_off</span><span class="w"> </span><span class="o">|=</span><span class="w"> </span><span class="n">htons</span><span class="p">(</span><span class="n">IP_MF</span><span class="p">);</span><span class="w">  </span><span class="c1">// More Fragments</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="w">        </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">tot_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">htons</span><span class="p">(</span><span class="n">len</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">hlen</span><span class="p">);</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a><span class="w">        </span><span class="c1">// Пересчитываем checksum</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a><span class="w">        </span><span class="n">ip_send_check</span><span class="p">(</span><span class="n">iph</span><span class="p">);</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="w">        </span><span class="c1">// Отправляем фрагмент</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="w">        </span><span class="n">output</span><span class="p">(</span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">skb2</span><span class="p">);</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="w">        </span><span class="n">ptr</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">len</span><span class="p">;</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="w">        </span><span class="n">left</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">len</span><span class="p">;</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="__codelineno-8-42" name="__codelineno-8-42" href="#__codelineno-8-42"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>frag_off</code> содержит смещение в <strong>8-байтных блоках</strong> (не в байтах!). Это значит, что все фрагменты (кроме последнего) должны быть кратны 8 байтам. Legacy ограничение из времён, когда экономили каждый бит в заголовке.</p>
+<h3 id="reassembly-ip_defrag">Reassembly: ip_defrag()<a class="headerlink" href="#reassembly-ip_defrag" title="Permanent link">&para;</a></h3>
+<p>Получатель собирает фрагменты обратно. Ядро использует хеш-таблицу, индексированную по (src_ip, dst_ip, id, protocol):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// net/ipv4/ip_fragment.c</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">ipq</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">inet_frag_queue</span><span class="w"> </span><span class="n">q</span><span class="p">;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="n">u8</span><span class="w">              </span><span class="n">ecn</span><span class="p">;</span><span class="w">       </span><span class="c1">// ECN bits</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="n">u16</span><span class="w">             </span><span class="n">max_df_size</span><span class="p">;</span><span class="w"> </span><span class="c1">// Largest DF fragment</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="kt">int</span><span class="w">             </span><span class="n">iif</span><span class="p">;</span><span class="w">       </span><span class="c1">// Input interface</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="c1">// ... фрагменты хранятся в связном списке</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="p">};</span>
+</code></pre></div>
+<p>Таймаут на сборку: <code>ipfrag_time</code> (по умолчанию 30 секунд). Если не все фрагменты пришли за это время — всё дропается и ICMP Time Exceeded отправляется обратно.</p>
+<h3 id="mtu-1500">MTU 1500: Почему именно это число<a class="headerlink" href="#mtu-1500" title="Permanent link">&para;</a></h3>
+<p>1500 байт — это наследие Ethernet из 1980-х. При разработке выбирали между эффективностью (больше данных = меньше overhead заголовков) и задержкой (большой пакет долго передаётся на медленном канале). 1500 — компромисс для 10 Mbps Ethernet.</p>
+<p><strong>Jumbo Frames (9000 байт)</strong> — используются в дата-центрах. Снижают overhead заголовков с 2.6% (1500) до 0.4% (9000). Но требуют поддержки на <strong>всём</strong> пути — один свитч с MTU 1500 заставит фрагментировать.</p>
+<hr />
+<h2 id="24-routing">Часть 2.4: Routing — Как ядро решает, куда слать пакет<a class="headerlink" href="#24-routing" title="Permanent link">&para;</a></h2>
+<h3 id="fib-forwarding-information-base">FIB: Forwarding Information Base<a class="headerlink" href="#fib-forwarding-information-base" title="Permanent link">&para;</a></h3>
+<p>Linux использует <strong>FIB trie</strong> — compressed trie (Patricia trie) для longest prefix match (LPM).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// include/net/ip_fib.h</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">fib_table</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">hlist_node</span><span class="w">   </span><span class="n">tb_hlist</span><span class="p">;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="n">u32</span><span class="w">                 </span><span class="n">tb_id</span><span class="p">;</span><span class="w">         </span><span class="c1">// ID таблицы (main=254, local=255)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="kt">int</span><span class="w">                 </span><span class="n">tb_num_default</span><span class="p">;</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">rcu_head</span><span class="w">     </span><span class="n">rcu</span><span class="p">;</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w">       </span><span class="o">*</span><span class="n">tb_data</span><span class="p">;</span><span class="w">      </span><span class="c1">// Указатель на trie</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">long</span><span class="w">       </span><span class="n">__data</span><span class="p">[];</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="p">};</span>
+</code></pre></div>
+<h3 id="trie-hash-table">Почему trie, а не hash table<a class="headerlink" href="#trie-hash-table" title="Permanent link">&para;</a></h3>
+<p>Hash table даёт O(1) для exact match. Но routing — это <strong>prefix matching</strong>: для адреса <code>192.168.1.100</code> нужно найти наиболее длинный совпадающий префикс среди <code>192.168.1.0/24</code>, <code>192.168.0.0/16</code>, <code>0.0.0.0/0</code>. Hash table для этого бесполезен — пришлось бы проверять все 32 возможных длины префикса.</p>
+<p>Trie даёт O(W) в худшем случае, где W = 32 (количество бит в IPv4-адресе). На практике compressed trie (Patricia) значительно быстрее — пропускает общие префиксы.</p>
+<h3 id="lookup">Lookup путь<a class="headerlink" href="#lookup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Упрощённый путь поиска маршрута</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">fib_result</span><span class="w"> </span><span class="n">res</span><span class="p">;</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">struct</span><span class="w"> </span><span class="nc">flowi4</span><span class="w"> </span><span class="n">fl4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="p">.</span><span class="n">daddr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">daddr</span><span class="p">,</span><span class="w">    </span><span class="c1">// Куда</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span><span class="p">.</span><span class="n">saddr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">saddr</span><span class="p">,</span><span class="w">    </span><span class="c1">// Откуда</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span><span class="p">.</span><span class="n">flowi4_tos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">tos</span><span class="p">,</span><span class="w"> </span><span class="c1">// TOS для policy routing</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">    </span><span class="p">.</span><span class="n">flowi4_oif</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dev</span><span class="o">-&gt;</span><span class="n">ifindex</span><span class="p">,</span><span class="w"> </span><span class="c1">// Интерфейс</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="p">};</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="c1">// Ищем маршрут в FIB</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fib_lookup</span><span class="p">(</span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">fl4</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">res</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">    </span><span class="k">goto</span><span class="w"> </span><span class="n">no_route</span><span class="p">;</span><span class="w">  </span><span class="c1">// ICMP Destination Unreachable</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="c1">// res содержит: next hop, output device, metric, и т.д.</span>
+</code></pre></div>
+<h3 id="policy-routing">Policy Routing: Несколько таблиц<a class="headerlink" href="#policy-routing" title="Permanent link">&para;</a></h3>
+<p>Linux поддерживает до 256 таблиц маршрутизации. Выбор таблицы — через <code>ip rule</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Трафик от 10.0.0.0/8 идёт через таблицу 100</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>ip<span class="w"> </span>rule<span class="w"> </span>add<span class="w"> </span>from<span class="w"> </span><span class="m">10</span>.0.0.0/8<span class="w"> </span>table<span class="w"> </span><span class="m">100</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># В таблице 100 — маршрут через другой шлюз</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span>default<span class="w"> </span>via<span class="w"> </span><span class="m">172</span>.16.0.1<span class="w"> </span>table<span class="w"> </span><span class="m">100</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># Основная таблица main — для всего остального</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span>default<span class="w"> </span>via<span class="w"> </span><span class="m">192</span>.168.1.1
+</code></pre></div>
+<p>Это позволяет реализовать multi-homing (два провайдера), VPN routing, и сложные сетевые топологии.</p>
+<hr />
+<h2 id="25-ip-forwarding-path">Часть 2.5: IP Forwarding Path — Полный маршрут пакета<a class="headerlink" href="#25-ip-forwarding-path" title="Permanent link">&para;</a></h2>
+<h3 id="ascii">ASCII диаграмма<a class="headerlink" href="#ascii" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Пакет прибывает на eth0
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>  ↓
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>ip_rcv()                        // Валидация заголовка
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>  ↓
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>NF_INET_PRE_ROUTING             // Netfilter: DNAT, conntrack
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>  ↓
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>ip_rcv_finish()
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>  ↓
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>Routing Decision:
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>  Для нас? → ip_local_deliver() → TCP/UDP
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>  Не для нас? ↓
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>  ↓
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>ip_forward()                    // TTL--, netfilter FORWARD
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>  ↓
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>NF_INET_FORWARD                 // Netfilter: фильтрация
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>  ↓
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>ip_forward_finish()
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>  ↓
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>dst_output() → ip_output()
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>  ↓
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>NF_INET_POST_ROUTING            // Netfilter: SNAT, MASQUERADE
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>  ↓
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>ip_finish_output()
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>  ↓
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>ip_finish_output2()
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>  ↓
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>neigh_output()                  // ARP resolution
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>  ↓
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>dev_queue_xmit()                // → Qdisc → NIC → Провод
+</code></pre></div>
+<h3 id="ip_forward">ip_forward(): Ключевая функция<a class="headerlink" href="#ip_forward" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ip_forward</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="p">{</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">iphdr</span><span class="w"> </span><span class="o">*</span><span class="n">iph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ip_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">rtable</span><span class="w"> </span><span class="o">*</span><span class="n">rt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">skb_rtable</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">    </span><span class="c1">// 1. Проверяем TTL</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">ttl</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">        </span><span class="n">icmp_send</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_TIME_EXCEEDED</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_EXC_TTL</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">drop</span><span class="p">;</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">    </span><span class="c1">// 2. Проверяем, не слишком ли большой пакет для next hop</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">skb</span><span class="o">-&gt;</span><span class="n">len</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">dst_mtu</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rt</span><span class="o">-&gt;</span><span class="n">dst</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">frag_off</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">htons</span><span class="p">(</span><span class="n">IP_DF</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="w">        </span><span class="c1">// Пакет слишком большой и DF стоит → ICMP Frag Needed</span>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="w">        </span><span class="n">icmp_send</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_DEST_UNREACH</span><span class="p">,</span><span class="w"> </span><span class="n">ICMP_FRAG_NEEDED</span><span class="p">,</span>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="w">                  </span><span class="n">htonl</span><span class="p">(</span><span class="n">dst_mtu</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rt</span><span class="o">-&gt;</span><span class="n">dst</span><span class="p">)));</span>
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">drop</span><span class="p">;</span>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="w">    </span><span class="c1">// 3. Декрементируем TTL</span>
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="w">    </span><span class="n">ip_decrease_ttl</span><span class="p">(</span><span class="n">iph</span><span class="p">);</span>
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="w">    </span><span class="c1">// 4. Netfilter FORWARD hook</span>
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">NF_HOOK</span><span class="p">(</span><span class="n">NFPROTO_IPV4</span><span class="p">,</span><span class="w"> </span><span class="n">NF_INET_FORWARD</span><span class="p">,</span>
+<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a><span class="w">                   </span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="o">-&gt;</span><span class="n">dev</span><span class="p">,</span><span class="w"> </span><span class="n">rt</span><span class="o">-&gt;</span><span class="n">dst</span><span class="p">.</span><span class="n">dev</span><span class="p">,</span>
+<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="w">                   </span><span class="n">ip_forward_finish</span><span class="p">);</span>
+<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="nl">drop</span><span class="p">:</span>
+<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a><span class="w">    </span><span class="n">kfree_skb</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">NET_RX_DROP</span><span class="p">;</span>
+<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="conntrack">Conntrack: Цена отслеживания соединений<a class="headerlink" href="#conntrack" title="Permanent link">&para;</a></h3>
+<p>Netfilter connection tracking (<code>nf_conntrack</code>) добавляет значительный overhead:</p>
+<ul>
+<li>Хеш-таблица всех соединений (память)</li>
+<li>Lookup на каждый пакет (CPU)</li>
+<li>Lock contention при высоком PPS</li>
+</ul>
+<p>Для чистого роутера (без NAT и stateful firewall) можно отключить:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Отключаем conntrack для forwarded трафика</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>iptables<span class="w"> </span>-t<span class="w"> </span>raw<span class="w"> </span>-A<span class="w"> </span>PREROUTING<span class="w"> </span>-j<span class="w"> </span>NOTRACK
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>iptables<span class="w"> </span>-t<span class="w"> </span>raw<span class="w"> </span>-A<span class="w"> </span>OUTPUT<span class="w"> </span>-j<span class="w"> </span>NOTRACK
+</code></pre></div>
+<p>Или в nftables:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>nft<span class="w"> </span>add<span class="w"> </span>rule<span class="w"> </span>ip<span class="w"> </span>raw<span class="w"> </span>prerouting<span class="w"> </span>notrack
+</code></pre></div>
+<p>Это может дать 20-30% прирост PPS на чисто forwarding нагрузке.</p>
+<hr />
+<h2 id="26-ip-options">Часть 2.6: IP Options — Редкие, но опасные<a class="headerlink" href="#26-ip-options" title="Permanent link">&para;</a></h2>
+<p>IP Options занимают байты между базовым 20-байтным заголовком и данными (до 40 байт).</p>
+<h3 id="_6">Типы<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Record Route</strong> — каждый роутер записывает свой IP. Максимум 9 хопов (40 байт / 4 байта на IP).</li>
+<li><strong>Timestamp</strong> — каждый роутер добавляет время прохождения.</li>
+<li><strong>Loose Source Routing</strong> — отправитель задаёт список роутеров, через которые пакет должен пройти.</li>
+<li><strong>Strict Source Routing</strong> — отправитель задаёт <strong>точный</strong> путь.</li>
+</ul>
+<h3 id="_7">Почему они убивают производительность<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Переменная длина заголовка</strong> — NIC не может делать hardware offload (TSO, checksum) для пакетов с options.</li>
+<li><strong>Slow path</strong> — ядро переключается с fast path на slow path для обработки options.</li>
+<li><strong>Безопасность</strong> — Source Routing позволяет обходить файрволлы. Почти все production-роутеры дропают такие пакеты.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Дропаем пакеты с source routing</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>sysctl<span class="w"> </span>-w<span class="w"> </span>net.ipv4.conf.all.accept_source_route<span class="o">=</span><span class="m">0</span>
+</code></pre></div>
+<hr />
+<h2 id="27-multicast">Часть 2.7: Multicast<a class="headerlink" href="#27-multicast" title="Permanent link">&para;</a></h2>
+<h3 id="_8">Основы<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
+<p>IP multicast использует адреса 224.0.0.0/4 (224.0.0.0 — 239.255.255.255). Один отправитель — много получателей.</p>
+<p><strong>IGMP (Internet Group Management Protocol)</strong> — протокол, которым хосты сообщают роутеру, какие multicast-группы им интересны.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Посмотреть, в каких группах состоит хост</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>cat<span class="w"> </span>/proc/net/igmp
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># Или через ip</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>ip<span class="w"> </span>maddr<span class="w"> </span>show
+</code></pre></div>
+<h3 id="kernel-multicast-routing">Kernel multicast routing<a class="headerlink" href="#kernel-multicast-routing" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1">// net/ipv4/ipmr.c</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">ip_mr_input</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">)</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="p">{</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="c1">// Ищем multicast route в MFC (Multicast Forwarding Cache)</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">    </span><span class="n">cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ipmr_cache_find</span><span class="p">(</span><span class="n">mrt</span><span class="p">,</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">saddr</span><span class="p">,</span><span class="w"> </span><span class="n">iph</span><span class="o">-&gt;</span><span class="n">daddr</span><span class="p">);</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">cache</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">        </span><span class="c1">// Пересылаем на все выходные интерфейсы</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ip_mr_forward</span><span class="p">(</span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="n">mrt</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">cache</span><span class="p">,</span><span class="w"> </span><span class="n">local</span><span class="p">);</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">    </span><span class="c1">// Нет маршрута — отправляем в userspace (mrouted/pimd)</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ipmr_cache_unresolved</span><span class="p">(</span><span class="n">mrt</span><span class="p">,</span><span class="w"> </span><span class="n">vif</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">dev</span><span class="p">);</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="multicast">Когда multicast важен<a class="headerlink" href="#multicast" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Финансовые данные</strong> — биржевые фиды (market data) раздаются multicast на тысячи подписчиков</li>
+<li><strong>IPTV</strong> — видеопотоки для телевидения</li>
+<li><strong>Кластерные протоколы</strong> — Pacemaker, Corosync используют multicast для обнаружения узлов</li>
+</ul>
+<hr />
+<h2 id="28-ipsec-integration">Часть 2.8: IPsec Integration<a class="headerlink" href="#28-ipsec-integration" title="Permanent link">&para;</a></h2>
+<h3 id="xfrm-framework">XFRM Framework<a class="headerlink" href="#xfrm-framework" title="Permanent link">&para;</a></h3>
+<p>Linux реализует IPsec через <strong>XFRM</strong> (transform) framework, который встраивается в IP path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>Исходящий:
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>ip_output() → xfrm_output() → ESP/AH шифрование → ip_output() (уже зашифрованный)
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>Входящий:
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>ip_rcv() → xfrm_input() → ESP/AH расшифровка → ip_rcv_finish() (расшифрованный)
+</code></pre></div>
+<h3 id="esp-encapsulating-security-payload">ESP (Encapsulating Security Payload)<a class="headerlink" href="#esp-encapsulating-security-payload" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>+----------+----------+----------+----------+
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>| IP Header | ESP Hdr  | Encrypted Payload  | ESP Trailer |
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>+----------+----------+----------+----------+
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>                       |← шифрование →|
+</code></pre></div>
+<p>ESP шифрует payload и опционально аутентифицирует весь пакет. Алгоритмы: AES-GCM (рекомендуемый), AES-CBC + HMAC-SHA256.</p>
+<h3 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h3>
+<p>IPsec в ядре — дорогая операция:
+- AES-GCM: ~3-5 Gbps на одном ядре (software)
+- С аппаратным offload (Intel QAT, NIC inline crypto): 25-100 Gbps</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># Проверить, поддерживает ли NIC IPsec offload</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>ethtool<span class="w"> </span>-k<span class="w"> </span>eth0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>esp
+</code></pre></div>
+<p>Современные NIC (Intel E810, Mellanox ConnectX-6) поддерживают inline IPsec — шифрование/расшифровка происходит прямо на карте, без участия CPU.</p>
+<hr />
+<h2 id="29-ipv6">Часть 2.9: IPv6 — Не «будущее», а настоящее<a class="headerlink" href="#29-ipv6" title="Permanent link">&para;</a></h2>
+<p><em>В 2026 году IPv6 составляет более 45% мирового трафика (Google IPv6 Statistics). Для Senior-инженера незнание IPv6 — такой же пробел, как незнание TCP.</em></p>
+<h3 id="ipv6-header-vs-ipv4">IPv6 Header vs IPv4: Радикальное упрощение<a class="headerlink" href="#ipv6-header-vs-ipv4" title="Permanent link">&para;</a></h3>
+<p>IPv4 заголовок — 20-60 байт (переменная длина из-за Options). IPv6 — <strong>всегда 40 байт</strong>, фиксированная длина:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1">// include/uapi/linux/ipv6.h</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">ipv6hdr</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="cp">#if defined(__LITTLE_ENDIAN_BITFIELD)</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">priority</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span><span class="w">    </span><span class="c1">// Traffic Class (верхние 4 бита)</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">            </span><span class="nl">version</span><span class="p">:</span><span class="mi">4</span><span class="p">;</span><span class="w">     </span><span class="c1">// Всегда 6</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="cp">#elif defined(__BIG_ENDIAN_BITFIELD)</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">version</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">            </span><span class="nl">priority</span><span class="p">:</span><span class="mi">4</span><span class="p">;</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="cp">#endif</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">flow_lbl</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span><span class="w">   </span><span class="c1">// Flow Label (20 бит) — новинка IPv6</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="w">    </span><span class="n">__be16</span><span class="w">  </span><span class="n">payload_len</span><span class="p">;</span><span class="w">   </span><span class="c1">// Длина payload (без заголовка!)</span>
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">nexthdr</span><span class="p">;</span><span class="w">       </span><span class="c1">// Next Header (аналог protocol в IPv4)</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">hop_limit</span><span class="p">;</span><span class="w">     </span><span class="c1">// Аналог TTL</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">in6_addr</span><span class="w"> </span><span class="n">saddr</span><span class="p">;</span><span class="w"> </span><span class="c1">// 128 бит</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">in6_addr</span><span class="w"> </span><span class="n">daddr</span><span class="p">;</span><span class="w"> </span><span class="c1">// 128 бит</span>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a><span class="p">};</span>
+</code></pre></div>
+<h3 id="_9">Сравнение заголовков<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>IPv4 (20 байт минимум):              IPv6 (40 байт фиксировано):
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>┌──────────────────────────┐         ┌──────────────────────────┐
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>│ Ver│IHL│TOS │ Total Len  │         │ Ver│TC │   Flow Label    │
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>├──────────────────────────┤         ├──────────────────────────┤
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>│ Identification │Flg│Frag│         │ Payload Length│NextH│Hop │
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>├──────────────────────────┤         ├──────────────────────────┤
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>│ TTL │Proto│ Header Chksum│         │                          │
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>├──────────────────────────┤         │   Source Address          │
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>│     Source Address       │         │   (128 бит / 16 байт)   │
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>├──────────────────────────┤         │                          │
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>│   Destination Address    │         ├──────────────────────────┤
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>├──────────────────────────┤         │                          │
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>│   Options (0-40 байт)   │         │   Destination Address    │
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>└──────────────────────────┘         │   (128 бит / 16 байт)   │
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a>                                     │                          │
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a>                                     └──────────────────────────┘
+</code></pre></div>
+<p><strong>Что убрали в IPv6:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Поле IPv4</th>
+<th>Что произошло</th>
+<th>Почему</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IHL (Header Length)</td>
+<td>Убрано</td>
+<td>Заголовок фиксированный — длину знать не нужно</td>
+</tr>
+<tr>
+<td>Header Checksum</td>
+<td><strong>Убрано</strong></td>
+<td>L2 (Ethernet CRC) и L4 (TCP/UDP checksum) уже проверяют целостность. Двойная проверка — пустая трата CPU на каждом хопе</td>
+</tr>
+<tr>
+<td>Identification, Flags, Fragment Offset</td>
+<td>Убрано из базового заголовка</td>
+<td>Фрагментация — только через Extension Header, и <strong>только на отправителе</strong></td>
+</tr>
+<tr>
+<td>Options</td>
+<td>Убрано</td>
+<td>Заменены Extension Headers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="checksum">Отсутствие Checksum — осознанное решение<a class="headerlink" href="#checksum" title="Permanent link">&para;</a></h3>
+<p>В IPv4 каждый роутер обязан:
+1. Декрементировать TTL
+2. <strong>Пересчитать</strong> Header Checksum (даже инкрементально — это CPU)</p>
+<p>В IPv6 checksum убран полностью. Логика:
+- <strong>Ethernet</strong> уже проверяет CRC32 на L2
+- <strong>TCP/UDP</strong> имеют собственные checksums (причём в IPv6 UDP checksum <strong>обязателен</strong>, в IPv4 был опциональным)
+- Убрав checksum, роутеры обрабатывают пакеты быстрее — критично при миллионах PPS</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1">// net/ipv6/ip6_input.c</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ipv6_rcv</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">net_device</span><span class="w"> </span><span class="o">*</span><span class="n">dev</span><span class="p">,</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">             </span><span class="k">struct</span><span class="w"> </span><span class="nc">packet_type</span><span class="w"> </span><span class="o">*</span><span class="n">pt</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">net_device</span><span class="w"> </span><span class="o">*</span><span class="n">orig_dev</span><span class="p">)</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="p">{</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">ipv6hdr</span><span class="w"> </span><span class="o">*</span><span class="n">hdr</span><span class="p">;</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">pskb_may_pull</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ipv6hdr</span><span class="p">)))</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">err</span><span class="p">;</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="w">    </span><span class="n">hdr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ipv6_hdr</span><span class="p">(</span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a><span class="w">    </span><span class="c1">// Проверяем версию</span>
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hdr</span><span class="o">-&gt;</span><span class="n">version</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">6</span><span class="p">)</span>
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a><span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">err</span><span class="p">;</span>
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a><span class="w">    </span><span class="c1">// НЕТ проверки checksum — его просто нет в заголовке!</span>
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a><span class="w">    </span><span class="c1">// Проверяем payload_len</span>
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a><span class="w">    </span><span class="c1">// ...</span>
+<a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a>
+<a id="__codelineno-25-21" name="__codelineno-25-21" href="#__codelineno-25-21"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">NF_HOOK</span><span class="p">(</span><span class="n">NFPROTO_IPV6</span><span class="p">,</span><span class="w"> </span><span class="n">NF_INET_PRE_ROUTING</span><span class="p">,</span>
+<a id="__codelineno-25-22" name="__codelineno-25-22" href="#__codelineno-25-22"></a><span class="w">                   </span><span class="n">net</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">dev</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">ip6_rcv_finish</span><span class="p">);</span>
+<a id="__codelineno-25-23" name="__codelineno-25-23" href="#__codelineno-25-23"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="extension-headers-options">Extension Headers: Цепочка вместо Options<a class="headerlink" href="#extension-headers-options" title="Permanent link">&para;</a></h3>
+<p>IPv6 заменил монолитные Options на <strong>цепочку Extension Headers</strong>. Каждый заголовок содержит поле <code>Next Header</code>, указывающее тип следующего:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>IPv6 Header (nexthdr = 0)
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>  → Hop-by-Hop Options (nexthdr = 43)
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    → Routing Header (nexthdr = 44)
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>      → Fragment Header (nexthdr = 6)
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>        → TCP Header
+</code></pre></div>
+<p>Основные Extension Headers:</p>
+<table>
+<thead>
+<tr>
+<th>Next Header</th>
+<th>Тип</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Hop-by-Hop</td>
+<td>Обрабатывается каждым роутером (Router Alert, Jumbogram)</td>
+</tr>
+<tr>
+<td>43</td>
+<td>Routing</td>
+<td>Аналог Source Routing в IPv4 (Type 2 для Mobile IPv6)</td>
+</tr>
+<tr>
+<td>44</td>
+<td>Fragment</td>
+<td>Фрагментация (только на отправителе!)</td>
+</tr>
+<tr>
+<td>50</td>
+<td>ESP</td>
+<td>IPsec шифрование</td>
+</tr>
+<tr>
+<td>51</td>
+<td>AH</td>
+<td>IPsec аутентификация</td>
+</tr>
+<tr>
+<td>60</td>
+<td>Destination</td>
+<td>Опции для конечного получателя</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c1">// Обработка Extension Headers в ядре — цепочка вызовов</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="c1">// net/ipv6/exthdrs.c</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="c1">// Каждый Extension Header регистрирует handler</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">inet6_protocol</span><span class="w"> </span><span class="n">rthdr_protocol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="w">    </span><span class="p">.</span><span class="n">handler</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="n">ipv6_rthdr_rcv</span><span class="p">,</span><span class="w">    </span><span class="c1">// Routing Header</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="w">    </span><span class="p">.</span><span class="n">flags</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="n">INET6_PROTO_NOPOLICY</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">INET6_PROTO_FINAL</span><span class="p">,</span>
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a><span class="p">};</span>
+</code></pre></div>
+<p><strong>Проблема Extension Headers:</strong> middleboxes. Многие файрволлы и роутеры дропают пакеты с Extension Headers, потому что не могут заглянуть в L4 (TCP/UDP header спрятан за цепочкой). RFC 7045 запрещает это, но на практике ~40% пакетов с Extension Headers теряются в интернете.</p>
+<h3 id="ipv6">Фрагментация в IPv6: Радикально другой подход<a class="headerlink" href="#ipv6" title="Permanent link">&para;</a></h3>
+<p><strong>В IPv6 промежуточные роутеры НЕ фрагментируют.</strong> Это фундаментальное отличие от IPv4.</p>
+<p>Если пакет больше MTU канала, роутер:
+1. Дропает пакет
+2. Отправляет ICMPv6 Packet Too Big (тип 2) с MTU канала</p>
+<p>Фрагментация допускается <strong>только на отправителе</strong> через Fragment Extension Header:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1">// Fragment Extension Header (8 байт)</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="k">struct</span><span class="w"> </span><span class="nc">frag_hdr</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">nexthdr</span><span class="p">;</span><span class="w">        </span><span class="c1">// Тип следующего заголовка</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">    </span><span class="n">__u8</span><span class="w">    </span><span class="n">reserved</span><span class="p">;</span><span class="w">       </span><span class="c1">// Зарезервировано</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="w">    </span><span class="n">__be16</span><span class="w">  </span><span class="n">frag_off</span><span class="p">;</span><span class="w">       </span><span class="c1">// Offset (13 бит) + Res (2 бита) + M flag (1 бит)</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="w">    </span><span class="n">__be32</span><span class="w">  </span><span class="n">identification</span><span class="p">;</span><span class="w"> </span><span class="c1">// Идентификатор фрагмента</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="p">};</span>
+</code></pre></div>
+<p><strong>Следствие: PMTUD обязателен для IPv6.</strong> Нет запасного варианта с фрагментацией на промежуточных узлах. Если ICMPv6 Packet Too Big блокируется файрволлом — соединение ломается (PMTU black hole). Поэтому RFC 4890 <strong>требует</strong> пропускать ICMPv6 Packet Too Big.</p>
+<p>Минимальный MTU для IPv6 — <strong>1280 байт</strong> (против 68 в IPv4). Это гарантирует, что PMTUD может найти рабочий размер пакета.</p>
+<h3 id="flow-label">Flow Label: Микрооптимизация для роутеров<a class="headerlink" href="#flow-label" title="Permanent link">&para;</a></h3>
+<p>20-битное поле Flow Label — уникальная фича IPv6. Идея: все пакеты одного «потока» (src + dst + flow label) должны идти одним маршрутом.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># Посмотреть Flow Label в дампе</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>tcpdump<span class="w"> </span>-i<span class="w"> </span>eth0<span class="w"> </span>-v<span class="w"> </span>ip6
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1"># Linux генерирует flow label автоматически</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>sysctl<span class="w"> </span>net.ipv6.flowlabel_state_ranges
+</code></pre></div>
+<p>Роутеры могут кешировать forwarding decision по (src, dst, flow_label) вместо полного lookup. Это ускоряет обработку пакетов одного соединения.</p>
+<h3 id="ipv6-linux-dual-stack">IPv6 в Linux: Dual Stack<a class="headerlink" href="#ipv6-linux-dual-stack" title="Permanent link">&para;</a></h3>
+<p>Linux использует dual-stack подход — IPv4 и IPv6 работают параллельно:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="c1"># Проверяем IPv6</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>ip<span class="w"> </span>-6<span class="w"> </span>addr<span class="w"> </span>show
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>ip<span class="w"> </span>-6<span class="w"> </span>route<span class="w"> </span>show
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="c1"># Статистика IPv6</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>cat<span class="w"> </span>/proc/net/snmp6<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a><span class="c1"># Отключение IPv6 (НЕ рекомендуется, но бывает нужно)</span>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>sysctl<span class="w"> </span>-w<span class="w"> </span>net.ipv6.conf.all.disable_ipv6<span class="o">=</span><span class="m">1</span>
+</code></pre></div>
+<p><strong>IPv4-mapped IPv6 addresses:</strong> Серверы, слушающие на <code>::</code> (IPv6 any), автоматически принимают IPv4-соединения. IPv4-адрес <code>192.168.1.1</code> представляется как <code>::ffff:192.168.1.1</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1">// net/ipv6/af_inet6.c</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="c1">// Когда приходит IPv4-соединение на IPv6-сокет:</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="c1">// saddr = ::ffff:192.168.1.1</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="c1">// Это позволяет одному сокету обслуживать оба протокола</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="c1"># Один сервер на обоих стеках</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>ss<span class="w"> </span>-tlnp<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="m">443</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="c1"># LISTEN  0  128  *:443  → слушает и IPv4, и IPv6</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="c1"># Отдельные сокеты (IPV6_V6ONLY)</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>sysctl<span class="w"> </span>net.ipv6.bindv6only<span class="o">=</span><span class="m">1</span>
+</code></pre></div>
+<h3 id="ndp-arp">NDP: Замена ARP<a class="headerlink" href="#ndp-arp" title="Permanent link">&para;</a></h3>
+<p>В IPv6 нет ARP. Его заменяет <strong>Neighbor Discovery Protocol (NDP)</strong>, работающий поверх ICMPv6:</p>
+<table>
+<thead>
+<tr>
+<th>Функция</th>
+<th>IPv4</th>
+<th>IPv6 (NDP)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Маппинг IP → MAC</td>
+<td>ARP (broadcast)</td>
+<td>Neighbor Solicitation (multicast)</td>
+</tr>
+<tr>
+<td>Router Discovery</td>
+<td>DHCP / manual</td>
+<td>Router Solicitation / Advertisement</td>
+</tr>
+<tr>
+<td>Duplicate Address Detection</td>
+<td>ARP probe</td>
+<td>DAD (Neighbor Solicitation)</td>
+</tr>
+<tr>
+<td>Redirect</td>
+<td>ICMP Redirect</td>
+<td>ICMPv6 Redirect</td>
+</tr>
+</tbody>
+</table>
+<p>NDP использует multicast вместо broadcast — это снижает нагрузку на хосты, не участвующие в обмене.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="c1"># Таблица соседей IPv6 (аналог arp -a)</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>ip<span class="w"> </span>-6<span class="w"> </span>neigh<span class="w"> </span>show
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="c1"># Отслеживание NDP</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>tcpdump<span class="w"> </span>-i<span class="w"> </span>eth0<span class="w"> </span><span class="s1">&#39;icmp6 and (ip6[40] == 135 or ip6[40] == 136)&#39;</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="c1"># 135 = Neighbor Solicitation, 136 = Neighbor Advertisement</span>
+</code></pre></div>
+<h3 id="ipv6-production">IPv6-специфичные проблемы в production<a class="headerlink" href="#ipv6-production" title="Permanent link">&para;</a></h3>
+<p><strong>1. Privacy Extensions (RFC 4941):</strong>
+Клиенты генерируют случайные IPv6-адреса, меняющиеся каждые несколько часов. Это ломает IP-based ACL и лог-корреляцию.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="c1"># Проверить</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>sysctl<span class="w"> </span>net.ipv6.conf.eth0.use_tempaddr
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="c1"># 0 = выключено, 2 = предпочитать temporary адреса</span>
+</code></pre></div>
+<p><strong>2. Сканирование сети:</strong>
+IPv4 подсеть /24 = 256 адресов, просканировать тривиально. IPv6 /64 = 2^64 адресов — полный скан невозможен. Это и плюс (безопасность), и минус (инвентаризация).</p>
+<p><strong>3. Happy Eyeballs (RFC 8305):</strong>
+Современные приложения пробуют IPv6 и IPv4 параллельно. Если IPv6 не отвечает за 250ms — переключаются на IPv4. Это маскирует проблемы с IPv6.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="c1"># Проверить, используется ли IPv6</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>curl<span class="w"> </span>-v<span class="w"> </span>https://example.com<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Connected to&quot;</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="c1"># Или принудительно</span>
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>curl<span class="w"> </span>-6<span class="w"> </span>https://example.com
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>curl<span class="w"> </span>-4<span class="w"> </span>https://example.com
+</code></pre></div>
+<hr />
+<h2 id="_10">Практическое задание<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
+<h3 id="1-craft-ip-scapy">Задача 1: Craft IP-пакетов с scapy<a class="headerlink" href="#1-craft-ip-scapy" title="Permanent link">&para;</a></h3>
+<p>Установите scapy (<code>pip install scapy</code>). Создайте и отправьте пакеты:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">scapy.all</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="c1"># Обычный ICMP ping</span>
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a><span class="n">pkt</span> <span class="o">=</span> <span class="n">IP</span><span class="p">(</span><span class="n">dst</span><span class="o">=</span><span class="s2">&quot;10.0.0.2&quot;</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span> <span class="o">/</span> <span class="n">ICMP</span><span class="p">()</span>
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="n">send</span><span class="p">(</span><span class="n">pkt</span><span class="p">)</span>
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a><span class="c1"># Пакет с маленьким TTL (должен умереть на 3-м хопе)</span>
+<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a><span class="n">pkt</span> <span class="o">=</span> <span class="n">IP</span><span class="p">(</span><span class="n">dst</span><span class="o">=</span><span class="s2">&quot;8.8.8.8&quot;</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">/</span> <span class="n">ICMP</span><span class="p">()</span>
+<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a><span class="n">sr1</span><span class="p">(</span><span class="n">pkt</span><span class="p">)</span>  <span class="c1"># Получим ICMP Time Exceeded</span>
+<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a>
+<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a><span class="c1"># Пакет с IP Options (Record Route)</span>
+<a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a><span class="n">pkt</span> <span class="o">=</span> <span class="n">IP</span><span class="p">(</span><span class="n">dst</span><span class="o">=</span><span class="s2">&quot;10.0.0.2&quot;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="p">[</span><span class="n">IPOption_RR</span><span class="p">()])</span> <span class="o">/</span> <span class="n">ICMP</span><span class="p">()</span>
+<a id="__codelineno-36-13" name="__codelineno-36-13" href="#__codelineno-36-13"></a><span class="n">ans</span> <span class="o">=</span> <span class="n">sr1</span><span class="p">(</span><span class="n">pkt</span><span class="p">)</span>
+<a id="__codelineno-36-14" name="__codelineno-36-14" href="#__codelineno-36-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">ans</span><span class="p">[</span><span class="n">IP</span><span class="p">]</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>  <span class="c1"># Увидим список роутеров</span>
+</code></pre></div>
+<h3 id="2-trace-ip_rcv-bpftrace">Задача 2: Trace ip_rcv() с bpftrace<a class="headerlink" href="#2-trace-ip_rcv-bpftrace" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>bpftrace<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="s1">kprobe:ip_rcv {</span>
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="s1">    $skb = (struct sk_buff *)arg0;</span>
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="s1">    $iph = (struct iphdr *)($skb-&gt;head + $skb-&gt;network_header);</span>
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a><span class="s1">    printf(&quot;TTL=%d proto=%d src=%s\n&quot;,</span>
+<a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a><span class="s1">           $iph-&gt;ttl, $iph-&gt;protocol,</span>
+<a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a><span class="s1">           ntop(AF_INET, &amp;$iph-&gt;saddr));</span>
+<a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a><span class="s1">}</span>
+<a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a><span class="s1">&#39;</span>
+</code></pre></div>
+<p>Запустите и наблюдайте за входящими пакетами. Какой TTL приходит? Какие протоколы? Видите ли вы паттерны?</p>
+<h3 id="3">Задача 3: Эксперимент с фрагментацией<a class="headerlink" href="#3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1"># Отправляем UDP-пакет размером 10000 байт (будет фрагментирован)</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>ping<span class="w"> </span>-s<span class="w"> </span><span class="m">10000</span><span class="w"> </span>-c<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">10</span>.0.0.2
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="c1"># На стороне получателя захватываем</span>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a>tcpdump<span class="w"> </span>-i<span class="w"> </span>eth0<span class="w"> </span>-v<span class="w"> </span><span class="s1">&#39;ip[6:2] &amp; 0x3fff != 0&#39;</span><span class="w">  </span><span class="c1"># Только фрагменты</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a><span class="c1"># Считаем фрагменты: 10000 / (1500 - 20) ≈ 7 фрагментов</span>
+</code></pre></div>
+<h3 id="4-policy-routing-isp">Задача 4: Policy Routing с двумя ISP<a class="headerlink" href="#4-policy-routing-isp" title="Permanent link">&para;</a></h3>
+<p>Настройте сервер с двумя провайдерами:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="c1"># Таблицы</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;100 isp1&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/iproute2/rt_tables
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;200 isp2&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/iproute2/rt_tables
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="c1"># Маршруты</span>
+<a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span>default<span class="w"> </span>via<span class="w"> </span><span class="m">10</span>.0.1.1<span class="w"> </span>table<span class="w"> </span>isp1
+<a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span>default<span class="w"> </span>via<span class="w"> </span><span class="m">10</span>.0.2.1<span class="w"> </span>table<span class="w"> </span>isp2
+<a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>
+<a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a><span class="c1"># Правила</span>
+<a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a>ip<span class="w"> </span>rule<span class="w"> </span>add<span class="w"> </span>from<span class="w"> </span><span class="m">10</span>.0.1.0/24<span class="w"> </span>table<span class="w"> </span>isp1
+<a id="__codelineno-39-11" name="__codelineno-39-11" href="#__codelineno-39-11"></a>ip<span class="w"> </span>rule<span class="w"> </span>add<span class="w"> </span>from<span class="w"> </span><span class="m">10</span>.0.2.0/24<span class="w"> </span>table<span class="w"> </span>isp2
+<a id="__codelineno-39-12" name="__codelineno-39-12" href="#__codelineno-39-12"></a>
+<a id="__codelineno-39-13" name="__codelineno-39-13" href="#__codelineno-39-13"></a><span class="c1"># Балансировка</span>
+<a id="__codelineno-39-14" name="__codelineno-39-14" href="#__codelineno-39-14"></a>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span>default<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-15" name="__codelineno-39-15" href="#__codelineno-39-15"></a><span class="w">    </span>nexthop<span class="w"> </span>via<span class="w"> </span><span class="m">10</span>.0.1.1<span class="w"> </span>weight<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-16" name="__codelineno-39-16" href="#__codelineno-39-16"></a><span class="w">    </span>nexthop<span class="w"> </span>via<span class="w"> </span><span class="m">10</span>.0.2.1<span class="w"> </span>weight<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<h3 id="5-routing-lookup">Задача 5: Производительность routing lookup<a class="headerlink" href="#5-routing-lookup" title="Permanent link">&para;</a></h3>
+<p>Создайте таблицу с 10K, 100K и 500K маршрутов. Измерьте:
+1. Время lookup с помощью <code>ip route get &lt;addr&gt;</code>
+2. Потребление памяти: <code>cat /proc/net/fib_triestat</code>
+3. PPS с разным числом маршрутов (iperf3 через forwarding)</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="c1"># Генерируем маршруты</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">100000</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="w">    </span>ip<span class="w"> </span>route<span class="w"> </span>add<span class="w"> </span><span class="k">$((</span><span class="nv">i</span><span class="o">/</span><span class="m">256</span><span class="k">))</span>.<span class="k">$((</span><span class="nv">i</span><span class="o">%</span><span class="m">256</span><span class="k">))</span>.0.0/16<span class="w"> </span>via<span class="w"> </span><span class="m">10</span>.0.0.1<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a><span class="k">done</span>
+<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a>
+<a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a><span class="c1"># Статистика trie</span>
+<a id="__codelineno-40-7" name="__codelineno-40-7" href="#__codelineno-40-7"></a>cat<span class="w"> </span>/proc/net/fib_triestat
+</code></pre></div>
+<hr />
+<p><strong>Следующий модуль:</strong> TCP State Machine и жизненный цикл соединения — как устанавливается, живёт и умирает TCP-соединение.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3458 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="От физического уровня и IP до TCP, CUBIC, BBR, QUIC и Windows Network Internals.">
+      
+      
+      
+      
+        <link rel="prev" href="../Module-07-QUIC-HTTP3/">
+      
+      
+        <link rel="next" href="../Module-09-Windows-Client-Networking/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Модуль 8. Windows Server Network Stack - Полное руководство по TCP</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#8-windows-network-stack-internals-ndis-rss" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Полное руководство по TCP" class="md-header__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Полное руководство по TCP
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Модуль 8. Windows Server Network Stack
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-tabs__link">
+          
+  
+  
+  Основы сетевого стека
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-04-Congestion-Control/" class="md-tabs__link">
+          
+  
+  
+  Управление трафиком
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-06-Application-Architecture/" class="md-tabs__link">
+          
+  
+  
+  Архитектура приложений
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Windows Networking
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-10-EVE-NG-Lab/" class="md-tabs__link">
+          
+  
+  
+  Лаборатории
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Полное руководство по TCP" class="md-nav__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Полное руководство по TCP
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Основы сетевого стека
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Основы сетевого стека
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 1. Физический уровень и ядро
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-02-IP-Protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 2. Internet Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-03-TCP-State-Machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 3. TCP State Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Управление трафиком
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Управление трафиком
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-04-Congestion-Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 4. Bufferbloat и Congestion Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-05-Traffic-Control-Tuning-Diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 5. Traffic Control, тюнинг и диагностика
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Lab-Setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лабораторный стенд
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура приложений
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура приложений
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-06-Application-Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 6. Высокопроизводительные сетевые приложения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-07-QUIC-HTTP3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 7. QUIC и HTTP/3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Networking
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Windows Networking
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 8. Windows Server Network Stack
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 8. Windows Server Network Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Введение и Суть (The "Why")
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.1: Ментальная модель — Конвейер обработки пакетов
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.1: Ментальная модель — Конвейер обработки пакетов">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аналогия: Аэропорт
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#82-ndis-6x-deep-dive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.2: Архитектура NDIS 6.x — Deep Dive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.2: Архитектура NDIS 6.x — Deep Dive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ndis-network-driver-interface-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NDIS: Network Driver Interface Specification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#net_buffer_list-nbl-windows-sk_buff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NET_BUFFER_LIST (NBL) — Windows-аналог sk_buff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ndis-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Просмотр NDIS-стека
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#83-receive-side-scaling-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.3: Receive Side Scaling (RSS) — Многоядерная обработка пакетов
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.3: Receive Side Scaling (RSS) — Многоядерная обработка пакетов">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Один процессор на весь трафик
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как работает RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toeplitz-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Toeplitz Hash: Детерминированное распределение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Настройка RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RSS Hash: Что хешируется
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss-etw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика RSS через ETW
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#84-vmq-dynamic-vmq-dvmq-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.4: VMQ и Dynamic VMQ (dVMQ) — RSS для виртуализации
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.4: VMQ и Dynamic VMQ (dVMQ) — RSS для виртуализации">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyper-v-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Hyper-V убивает RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vmq-virtual-machine-queues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMQ: Virtual Machine Queues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dvmq-dynamic-vmq-windows-server-2019" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dVMQ: Dynamic VMQ (Windows Server 2019+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#85-receive-segment-coalescing-rsc-gro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.5: Receive Segment Coalescing (RSC) — Пакетный GRO
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.5: Receive Segment Coalescing (RSC) — Пакетный GRO">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Миллионы мелких пакетов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rsc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RSC: Склеиваем пакеты
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#86-sr-iov-nuclear-option" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.6: SR-IOV — Обход гипервизора (Nuclear Option)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.6: SR-IOV — Обход гипервизора (Nuclear Option)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vswitch-bottleneck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: vSwitch = bottleneck
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sr-iov-vm-nic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SR-IOV: Прямой доступ VM к NIC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sr-iov" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Включение SR-IOV
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#87-windows-filtering-platform-wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.7: Windows Filtering Platform (WFP) — Файрвол изнутри
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.7: Windows Filtering Platform (WFP) — Файрвол изнутри">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Архитектура WFP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wfp_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика WFP: Кто блокирует?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edr-wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EDR-агенты в WFP: Скрытый убийца производительности
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pktmon-packet-sniffer-windows-server-2019" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pktmon: Встроенный packet sniffer (Windows Server 2019+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#88-tcpipsys-tcpip-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.8: tcpip.sys — TCP/IP стек Windows изнутри
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.8: tcpip.sys — TCP/IP стек Windows изнутри">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#congestion-control-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Congestion Control в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-powershell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP-параметры через PowerShell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#afdsys-ancillary-function-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AFD.sys — Ancillary Function Driver
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#89-etw-xperf-wpa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.9: Хирургическая диагностика — ETW, xperf, WPA
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.9: Хирургическая диагностика — ETW, xperf, WPA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#etw-event-tracing-for-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ETW: Event Tracing for Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dpcisr-system-cpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Анализ DPC/ISR — Когда "System" ест CPU
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#procdump-windbg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Procdump + WinDbg: Анализ дампов
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#810-hardcore-lab-chaos-engineering-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.10: Hardcore Lab — Chaos Engineering на Windows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.10: Hardcore Lab — Chaos Engineering на Windows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyper-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сценарий: Диагностика «медленной сети» на Hyper-V хосте
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 1: Воспроизводим проблему
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 2: Наблюдаем деградацию
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 3: Находим root cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 4: Фиксим
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#811-production-windows-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.11: Чеклист для Production Windows Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.11: Чеклист для Production Windows Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сетевой стек — обязательные проверки
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практические задания
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практические задания">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-rss-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 1: RSS Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-filter-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 2: Найди filter driver
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wfp-forensics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 3: WFP Forensics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-dpc-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 4: DPC Storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-sr-iov-live-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 5: SR-IOV Live Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Связь с другими модулями
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-09-Windows-Client-Networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 9. Windows Client Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лаборатории
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Лаборатории
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-10-EVE-NG-Lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 10. EVE-NG и Chaos Engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Введение и Суть (The "Why")
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.1: Ментальная модель — Конвейер обработки пакетов
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.1: Ментальная модель — Конвейер обработки пакетов">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аналогия: Аэропорт
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#82-ndis-6x-deep-dive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.2: Архитектура NDIS 6.x — Deep Dive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.2: Архитектура NDIS 6.x — Deep Dive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ndis-network-driver-interface-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NDIS: Network Driver Interface Specification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#net_buffer_list-nbl-windows-sk_buff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NET_BUFFER_LIST (NBL) — Windows-аналог sk_buff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ndis-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Просмотр NDIS-стека
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#83-receive-side-scaling-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.3: Receive Side Scaling (RSS) — Многоядерная обработка пакетов
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.3: Receive Side Scaling (RSS) — Многоядерная обработка пакетов">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Один процессор на весь трафик
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как работает RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toeplitz-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Toeplitz Hash: Детерминированное распределение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Настройка RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RSS Hash: Что хешируется
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rss-etw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика RSS через ETW
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#84-vmq-dynamic-vmq-dvmq-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.4: VMQ и Dynamic VMQ (dVMQ) — RSS для виртуализации
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.4: VMQ и Dynamic VMQ (dVMQ) — RSS для виртуализации">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyper-v-rss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Hyper-V убивает RSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vmq-virtual-machine-queues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMQ: Virtual Machine Queues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dvmq-dynamic-vmq-windows-server-2019" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dVMQ: Dynamic VMQ (Windows Server 2019+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#85-receive-segment-coalescing-rsc-gro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.5: Receive Segment Coalescing (RSC) — Пакетный GRO
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.5: Receive Segment Coalescing (RSC) — Пакетный GRO">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: Миллионы мелких пакетов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rsc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RSC: Склеиваем пакеты
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#86-sr-iov-nuclear-option" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.6: SR-IOV — Обход гипервизора (Nuclear Option)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.6: SR-IOV — Обход гипервизора (Nuclear Option)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vswitch-bottleneck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема: vSwitch = bottleneck
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sr-iov-vm-nic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SR-IOV: Прямой доступ VM к NIC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sr-iov" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Включение SR-IOV
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#87-windows-filtering-platform-wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.7: Windows Filtering Platform (WFP) — Файрвол изнутри
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.7: Windows Filtering Platform (WFP) — Файрвол изнутри">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Архитектура WFP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wfp_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика WFP: Кто блокирует?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edr-wfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EDR-агенты в WFP: Скрытый убийца производительности
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pktmon-packet-sniffer-windows-server-2019" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pktmon: Встроенный packet sniffer (Windows Server 2019+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#88-tcpipsys-tcpip-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.8: tcpip.sys — TCP/IP стек Windows изнутри
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.8: tcpip.sys — TCP/IP стек Windows изнутри">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#congestion-control-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Congestion Control в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-powershell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP-параметры через PowerShell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#afdsys-ancillary-function-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AFD.sys — Ancillary Function Driver
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#89-etw-xperf-wpa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.9: Хирургическая диагностика — ETW, xperf, WPA
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.9: Хирургическая диагностика — ETW, xperf, WPA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#etw-event-tracing-for-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ETW: Event Tracing for Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dpcisr-system-cpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Анализ DPC/ISR — Когда "System" ест CPU
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#procdump-windbg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Procdump + WinDbg: Анализ дампов
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#810-hardcore-lab-chaos-engineering-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.10: Hardcore Lab — Chaos Engineering на Windows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.10: Hardcore Lab — Chaos Engineering на Windows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyper-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сценарий: Диагностика «медленной сети» на Hyper-V хосте
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 1: Воспроизводим проблему
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 2: Наблюдаем деградацию
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 3: Находим root cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шаг 4: Фиксим
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#811-production-windows-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 8.11: Чеклист для Production Windows Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 8.11: Чеклист для Production Windows Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сетевой стек — обязательные проверки
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практические задания
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практические задания">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-rss-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 1: RSS Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-filter-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 2: Найди filter driver
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wfp-forensics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 3: WFP Forensics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-dpc-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 4: DPC Storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-sr-iov-live-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задание 5: SR-IOV Live Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Связь с другими модулями
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="8-windows-network-stack-internals-ndis-rss">Модуль 8: Windows Network Stack Internals — NDIS, RSS и траблшутинг на уровне ядра<a class="headerlink" href="#8-windows-network-stack-internals-ndis-rss" title="Permanent link">&para;</a></h1>
+<p><em>«Когда стандартные логи молчат, а Performance Monitor показывает "всё нормально" — вы ещё даже не начали диагностику».</em></p>
+<hr />
+<h2 id="the-why">Введение и Суть (The "Why")<a class="headerlink" href="#the-why" title="Permanent link">&para;</a></h2>
+<p>Каждый Senior Windows-инженер знает, как настроить NIC Teaming, включить RSS через GUI и посмотреть счётчики в PerfMon. Но когда на Hyper-V хосте с 40GbE адаптером сетевая производительность виртуальных машин падает до 5 Gbit/s, а <code>Get-NetAdapterStatistics</code> показывает отсутствие ошибок — стандартные инструменты бессильны.</p>
+<p>Проблема в том, что <strong>Windows Network Stack — это не монолит</strong>. Это конвейер из десятков драйверов, фильтров и offload-механизмов, где каждый компонент может стать bottleneck. И чтобы найти его, нужно понимать архитектуру от NIC до сокета.</p>
+<p>В этом модуле мы спустимся от <code>socket()</code> вызова в user space до <code>tcpip.sys</code> → <code>ndis.sys</code> → miniport driver, разберём RSS/VMQ/dVMQ/RSC/SR-IOV на уровне битов, и научимся диагностировать проблемы инструментами, которые Microsoft использует внутри.</p>
+<hr />
+<h2 id="81">Часть 8.1: Ментальная модель — Конвейер обработки пакетов<a class="headerlink" href="#81" title="Permanent link">&para;</a></h2>
+<h3 id="_1">Аналогия: Аэропорт<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<p>Представьте Windows Network Stack как аэропорт:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Пассажир (пакет) прибывает на посадочную полосу (NIC)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    ↓
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Паспортный контроль (NDIS miniport driver) — декодирует, проверяет
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    ↓
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Таможня (NDIS filter drivers: WFP, антивирус, NIC teaming)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    ↓
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Зал прилёта (NDIS protocol driver = tcpip.sys) — маршрутизация
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    ↓
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Выход к такси (AFD.sys) — доставка до приложения (socket)
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ↓
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>Пассажир садится в такси (Winsock → Application)
+</code></pre></div>
+<p>Каждый «контроль» — это отдельный драйвер. И каждый может создать очередь.</p>
+<p><strong>Критический момент:</strong> В Linux пакет проходит через единый <code>sk_buff</code> pipeline. В Windows — через <strong>NDIS filter stack</strong>, где каждый вендор (антивирус, файрвол, VPN, мониторинг) вставляет свой filter driver. Три filter driver — и ваш latency утроился.</p>
+<hr />
+<h2 id="82-ndis-6x-deep-dive">Часть 8.2: Архитектура NDIS 6.x — Deep Dive<a class="headerlink" href="#82-ndis-6x-deep-dive" title="Permanent link">&para;</a></h2>
+<h3 id="ndis-network-driver-interface-specification">NDIS: Network Driver Interface Specification<a class="headerlink" href="#ndis-network-driver-interface-specification" title="Permanent link">&para;</a></h3>
+<p>NDIS — это <strong>фреймворк</strong>, через который все сетевые компоненты Windows общаются друг с другом. Версия 6.80+ (Windows Server 2019+) поддерживает все современные offload-механизмы.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌─────────────────────────────────────────────────────────────┐
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│                    User Mode                                │
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│   ┌──────────┐  ┌──────────┐  ┌──────────┐                │
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   │ App.exe  │  │ IIS/HTTP │  │ SQL Svr  │                │
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   └────┬─────┘  └────┬─────┘  └────┬─────┘                │
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│        │              │              │                      │
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   ┌────┴──────────────┴──────────────┴─────┐               │
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│   │         Winsock (ws2_32.dll)           │               │
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>│   └────────────────────┬───────────────────┘               │
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├────────────────────────┼───────────────────────────────────┤
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│                  Kernel Mode                                │
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│   ┌────────────────────┴───────────────────┐               │
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│   │          AFD.sys                        │               │
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│   │   (Ancillary Function Driver)          │               │
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│   │   Управляет socket buffers,            │               │
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>│   │   send/receive completion              │               │
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>│   └────────────────────┬───────────────────┘               │
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>│   ┌────────────────────┴───────────────────┐               │
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│   │         tcpip.sys                       │               │
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│   │   TCP/IP Protocol Driver               │               │
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>│   │   TCP state machine, IP routing,       │               │
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>│   │   congestion control (CUBIC/LEDBAT)    │               │
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>│   └────────────────────┬───────────────────┘               │
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>│   ┌────────────────────┴───────────────────┐               │
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>│   │         NDIS.sys                        │               │
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>│   │   NDIS Framework (6.80+)               │               │
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>│   │   NBL management, OID dispatch,        │               │
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>│   │   filter chain orchestration           │               │
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>│   └────┬───────────────┬───────────────────┘               │
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>│   ┌────┴────┐     ┌────┴──────────┐                        │
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>│   │ Filter  │     │   Filter      │                        │
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>│   │ Driver  │     │   Driver      │                        │
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>│   │ (WFP)   │     │  (AV/EDR)     │                        │
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>│   └────┬────┘     └────┬──────────┘                        │
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>│   ┌────┴───────────────┴───────────────────┐               │
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>│   │     NDIS Miniport Driver               │               │
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>│   │     (e.g., mlx5.sys, ixn65x64.sys)    │               │
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>│   │     Прямое взаимодействие с NIC        │               │
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>│   └────────────────────┬───────────────────┘               │
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>│                        │ DMA                                │
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>├────────────────────────┼───────────────────────────────────┤
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>│                   ┌────┴────┐                               │
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>│                   │   NIC   │     Hardware                  │
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>│                   └─────────┘                               │
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>└─────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="net_buffer_list-nbl-windows-sk_buff">NET_BUFFER_LIST (NBL) — Windows-аналог sk_buff<a class="headerlink" href="#net_buffer_list-nbl-windows-sk_buff" title="Permanent link">&para;</a></h3>
+<p>В Linux пакет описывается <code>sk_buff</code>. В Windows — <code>NET_BUFFER_LIST</code> (NBL):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>NET_BUFFER_LIST (NBL)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── NET_BUFFER (NB) → описывает один пакет
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│   ├── MDL (Memory Descriptor List) → описывает физ. страницы данных
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│   │   └── Mapped virtual address → собственно байты пакета
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│   ├── DataOffset → смещение до начала данных
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│   └── DataLength → длина данных
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── NET_BUFFER (NB) → следующий пакет (chained)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── Context area → метаданные для filter drivers
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>└── Next NBL → следующий NBL в цепочке
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Критическая разница с Linux</p>
+<p>В Linux <code>sk_buff</code> — один пакет. В Windows <code>NET_BUFFER_LIST</code> может содержать
+<strong>цепочку</strong> <code>NET_BUFFER</code>, каждый из которых — отдельный пакет. Это позволяет
+batch-processing: miniport driver отдаёт 64 пакета за один вызов <code>NdisMIndicateReceiveNetBufferLists()</code>.
+Это фундамент высокой производительности NDIS 6.x по сравнению с NDIS 5.x.</p>
+</div>
+<h3 id="ndis-">Просмотр NDIS-стека<a class="headerlink" href="#ndis-" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c"># Показать все NDIS miniport drivers</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">Get-NetAdapter</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">InterfaceDescription</span><span class="p">,</span> <span class="n">DriverFileName</span><span class="p">,</span> <span class="n">DriverVersion</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c"># Показать NDIS filter drivers (ВСЕ фильтры в стеке)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c"># Каждый фильтр — это задержка. Антивирус = +50-200μs на пакет.</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nb">Get-NetAdapterBinding</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">Enabled</span> <span class="o">-eq</span> <span class="nv">$true</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">DisplayName</span><span class="p">,</span> <span class="n">ComponentID</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c"># Детальная информация о miniport driver</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="nb">Get-NetAdapterAdvancedProperty</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="nb">Format-Table</span> <span class="n">DisplayName</span><span class="p">,</span> <span class="n">DisplayValue</span><span class="p">,</span> <span class="n">ValidDisplayValues</span> <span class="n">-AutoSize</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="c"># Через WMI/CIM — глубже</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="nb">Get-CimInstance</span> <span class="n">-ClassName</span> <span class="n">MSFT_NetAdapter</span> <span class="n">-Namespace</span> <span class="n">root</span><span class="p">/</span><span class="n">StandardCimv2</span> <span class="p">|</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">DriverDescription</span><span class="p">,</span> <span class="n">NdisMedium</span><span class="p">,</span> <span class="n">Speed</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Диагностический приём: Отключение фильтров</p>
+<p>Если подозреваете, что filter driver тормозит сеть — отключайте по одному:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c"># Список всех привязок</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">Get-NetAdapterBinding</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c"># Отключаем WFP Lightweight Filter (Windows Firewall)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nb">Disable-NetAdapterBinding</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-ComponentID</span> <span class="s2">&quot;ms_wfplwf_lower&quot;</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c"># Отключаем антивирус (название зависит от вендора)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="nb">Disable-NetAdapterBinding</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-ComponentID</span> <span class="s2">&quot;AvFilter&quot;</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c"># Проверяем: выросла ли производительность?</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c"># Если да — нашли виновника.</span>
+</code></pre></div></p>
+</div>
+<hr />
+<h2 id="83-receive-side-scaling-rss">Часть 8.3: Receive Side Scaling (RSS) — Многоядерная обработка пакетов<a class="headerlink" href="#83-receive-side-scaling-rss" title="Permanent link">&para;</a></h2>
+<h3 id="_2">Проблема: Один процессор на весь трафик<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p>Без RSS <strong>весь</strong> сетевой трафик обрабатывается одним ядром CPU. На 10GbE это ~14.8 Mpps (пакетов в секунду) при минимальном размере пакета. Одно ядро не может обработать столько — bottleneck.</p>
+<h3 id="rss">Как работает RSS<a class="headerlink" href="#rss" title="Permanent link">&para;</a></h3>
+<p>RSS распределяет входящие пакеты по нескольким очередям (hardware queues) NIC, каждая привязана к своему ядру CPU.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>                        NIC Hardware
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>┌──────────────────────────────────────────────┐
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│                                              │
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│  Входящий пакет → Hash Function              │
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│                   (Toeplitz)                 │
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>│                      │                       │
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>│    ┌─────────┬───────┼───────┬─────────┐     │
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>│    ↓         ↓       ↓       ↓         ↓     │
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>│  Queue 0  Queue 1  Queue 2  Queue 3  Queue N │
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>│    │         │       │       │         │     │
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>└────┼─────────┼───────┼───────┼─────────┼─────┘
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>     │         │       │       │         │
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>     ↓         ↓       ↓       ↓         ↓
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>   CPU 0     CPU 1   CPU 2   CPU 3    CPU N
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>   (DPC)     (DPC)   (DPC)   (DPC)    (DPC)
+</code></pre></div>
+<h3 id="toeplitz-hash">Toeplitz Hash: Детерминированное распределение<a class="headerlink" href="#toeplitz-hash" title="Permanent link">&para;</a></h3>
+<p>RSS использует <strong>Toeplitz hash</strong> — криптографически слабый, но быстрый хеш. На вход: <code>{SrcIP, DstIP, SrcPort, DstPort}</code>. На выходе: номер очереди.</p>
+<p><strong>Критическое свойство:</strong> все пакеты одного TCP-соединения <strong>всегда</strong> попадают в одну очередь → обрабатываются одним ядром → гарантируется порядок.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c"># === Проверяем RSS ===</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c"># Включён ли RSS?</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">Get-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c"># Enabled                 : True</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c"># NumberOfReceiveQueues   : 8</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c"># Profile                 : NUMAStatic</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c"># BaseProcessorGroup      : 0</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c"># BaseProcessorNumber     : 0</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c"># MaxProcessorGroup       : 0</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c"># MaxProcessorNumber      : 7</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c"># MaxProcessors           : 8</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="c"># Какие процессоры используются?</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="nb">Get-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">-ExpandProperty</span> <span class="n">IndirectionTable</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c"># Индексы CPU для каждого bucket в indirection table</span>
+</code></pre></div>
+<h3 id="rss_1">Настройка RSS<a class="headerlink" href="#rss_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c"># Включить RSS (если был отключён)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">Enable-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c"># Задать количество очередей</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c"># ВАЖНО: не ставьте больше, чем физических ядер (не HT!)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c"># HyperThreading-ядра делят execution units — два DPC на одном</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c"># физическом ядре будут конкурировать за кэш.</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-NumberOfReceiveQueues</span> <span class="n">8</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c"># Привязать RSS к конкретным ядрам</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c"># Пример: ядра 0-7 для NIC, ядра 8-15 для VM workload</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">`</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">-BaseProcessorNumber</span> <span class="n">0</span> <span class="p">`</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">-MaxProcessorNumber</span> <span class="n">7</span> <span class="p">`</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">-Profile</span> <span class="s2">&quot;NUMAStatic&quot;</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="c"># Профили RSS:</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="c"># NUMAStatic    — привязка к ядрам одного NUMA-узла (рекомендуется!)</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="c"># NUMAStatic​Rss — то же, но с динамическим ребалансом</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="c"># Conservative  — минимум ядер</span>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="c"># ClosestProcessor — ближайшие к NIC ядра</span>
+</code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">NUMA — главная ловушка RSS</p>
+<p>На двухсокетных серверах NIC физически подключена к одному NUMA-узлу.
+Если RSS раскидает пакеты на ядра <strong>другого</strong> NUMA-узла — каждый пакет
+будет проходить через QPI/UPI interconnect. Это +100-200ns на пакет.
+При 1 Mpps = 100-200ms дополнительной latency PER SECOND.</p>
+<p>Проверить NUMA-привязку NIC:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">Get-NetAdapterHardwareInfo</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">NumaNode</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c"># NumaNode: 0  ← NIC на NUMA node 0</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c"># RSS должен использовать ядра ТОГО ЖЕ NUMA node</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-Profile</span> <span class="s2">&quot;NUMAStatic&quot;</span>
+</code></pre></div></p>
+</div>
+<h3 id="rss-hash">RSS Hash: Что хешируется<a class="headerlink" href="#rss-hash" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c"># Посмотреть текущий тип хеша</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">Get-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">-ExpandProperty</span> <span class="n">HashType</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c"># IPv4, TCP/IPv4, IPv6, TCP/IPv6</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c"># По умолчанию хешируются: SrcIP + DstIP + SrcPort + DstPort (для TCP)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c"># Для UDP: только SrcIP + DstIP (нет портов — все UDP с одного IP → одна очередь!)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c"># Включить хеширование UDP-портов (важно для DNS, QUIC!)</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-HashType</span> <span class="s2">&quot;IPv4&quot;</span><span class="p">,</span> <span class="s2">&quot;TCP/IPv4&quot;</span><span class="p">,</span> <span class="s2">&quot;UDP/IPv4&quot;</span><span class="p">,</span> <span class="s2">&quot;IPv6&quot;</span><span class="p">,</span> <span class="s2">&quot;TCP/IPv6&quot;</span><span class="p">,</span> <span class="s2">&quot;UDP/IPv6&quot;</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">UDP и RSS: Скрытая ловушка</p>
+<p>По умолчанию Windows <strong>не хеширует</strong> порты для UDP. Это значит, что
+весь UDP-трафик с одного IP (например, тысячи DNS-ответов от 8.8.8.8)
+попадает на <strong>одно</strong> ядро. Для DNS-серверов и QUIC — это катастрофа.
+Включайте UDP hash всегда.</p>
+</div>
+<h3 id="rss-etw">Диагностика RSS через ETW<a class="headerlink" href="#rss-etw" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c"># Запускаем трассировку сетевого стека</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="n">capture</span><span class="p">=</span><span class="n">yes</span> <span class="n">tracefile</span><span class="p">=</span><span class="n">C</span><span class="p">:\</span><span class="n">traces</span><span class="p">\</span><span class="n">rss_diag</span><span class="p">.</span><span class="n">etl</span> <span class="p">`</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Windows-NDIS-PacketCapture</span> <span class="p">`</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Windows-TCPIP</span> <span class="p">`</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">maxSize</span><span class="p">=</span><span class="n">512</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c"># Генерируем нагрузку...</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="n">stop</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c"># Анализ: распределение пакетов по процессорам</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c"># В Message Analyzer (или WPA): фильтруем по ProcessorNumber</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="c"># Если все пакеты на CPU 0 — RSS не работает</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c"># Быстрая проверка: счётчики прерываний по процессорам</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c"># Если DPC концентрируются на одном ядре — RSS сломан</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c"># Через Performance Counter</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="nv">$counters</span> <span class="p">=</span> <span class="nb">Get-Counter</span> <span class="n">-Counter</span> <span class="s2">&quot;\Processor(*)\% DPC Time&quot;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">5</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="nv">$counters</span><span class="p">.</span><span class="n">CounterSamples</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span> <span class="o">-gt</span> <span class="n">5</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="nb">Sort-Object</span> <span class="n">CookedValue</span> <span class="n">-Descending</span> <span class="p">|</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="nb">Format-Table</span> <span class="n">InstanceName</span><span class="p">,</span> <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;DPC%&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="no">[math]</span><span class="p">::</span><span class="n">Round</span><span class="p">(</span><span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span><span class="p">,</span><span class="n">1</span><span class="p">)}}</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="c"># Ожидание: DPC нагрузка распределена по ядрам 0-7 (RSS working)</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="c"># Проблема: вся DPC нагрузка на CPU 0 (RSS broken/disabled)</span>
+</code></pre></div>
+<hr />
+<h2 id="84-vmq-dynamic-vmq-dvmq-rss">Часть 8.4: VMQ и Dynamic VMQ (dVMQ) — RSS для виртуализации<a class="headerlink" href="#84-vmq-dynamic-vmq-dvmq-rss" title="Permanent link">&para;</a></h2>
+<h3 id="hyper-v-rss">Проблема: Hyper-V убивает RSS<a class="headerlink" href="#hyper-v-rss" title="Permanent link">&para;</a></h3>
+<p>Когда NIC отдаётся виртуальной машине через vSwitch, <strong>RSS перестаёт работать</strong>. vSwitch — это software switch, он перехватывает все пакеты и раскидывает их по VM. Пакеты проходят через один CPU.</p>
+<h3 id="vmq-virtual-machine-queues">VMQ: Virtual Machine Queues<a class="headerlink" href="#vmq-virtual-machine-queues" title="Permanent link">&para;</a></h3>
+<p>VMQ решает проблему, выделяя <strong>отдельную hardware queue</strong> для каждой VM:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>                        NIC Hardware
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>┌──────────────────────────────────────────────┐
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>│                                              │
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>│  MAC filter → Пакет для VM-1? → Queue 1     │
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>│  MAC filter → Пакет для VM-2? → Queue 2     │
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>│  MAC filter → Default?       → Queue 0      │
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>│                                              │
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>│  Queue 0 ──→ CPU 0 (Host/vSwitch)           │
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>│  Queue 1 ──→ CPU 2 (VM-1 vCPU)             │
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>│  Queue 2 ──→ CPU 4 (VM-2 vCPU)             │
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>│                                              │
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>└──────────────────────────────────────────────┘
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c"># Включить VMQ</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nb">Set-NetAdapterVmq</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-Enabled</span> <span class="nv">$true</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c"># Посмотреть VMQ allocation</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nb">Get-NetAdapterVmqQueue</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="nb">Format-Table</span> <span class="n">QueueID</span><span class="p">,</span> <span class="n">MacAddress</span><span class="p">,</span> <span class="n">VlanID</span><span class="p">,</span> <span class="n">ProcessorAffinityMask</span> <span class="n">-AutoSize</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="c"># Сколько VMQ очередей доступно?</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="nb">Get-NetAdapterVmq</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">NumberOfReceiveQueues</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="c"># Типично: 16-128 для enterprise NIC (Intel X710, Mellanox ConnectX-5)</span>
+</code></pre></div>
+<h3 id="dvmq-dynamic-vmq-windows-server-2019">dVMQ: Dynamic VMQ (Windows Server 2019+)<a class="headerlink" href="#dvmq-dynamic-vmq-windows-server-2019" title="Permanent link">&para;</a></h3>
+<p>VMQ выделяет одну очередь на VM. Если VM генерирует 10 Gbit/s — одно ядро снова bottleneck. dVMQ решает это: <strong>несколько очередей на одну VM</strong>, фактически RSS внутри VMQ.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c"># dVMQ включается автоматически при:</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c"># 1. Windows Server 2019+</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c"># 2. NIC поддерживает dVMQ</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c"># 3. VMQ включён</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c"># Проверить поддержку dVMQ</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="nb">Get-NetAdapterAdvancedProperty</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-DisplayName</span> <span class="s2">&quot;*VMQ*&quot;</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c"># Настроить количество очередей для VM (в Hyper-V)</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="nb">Set-VMNetworkAdapter</span> <span class="n">-VMName</span> <span class="s2">&quot;app-01&quot;</span> <span class="n">-VmqWeight</span> <span class="n">100</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="nb">Set-VMNetworkAdapter</span> <span class="n">-VMName</span> <span class="s2">&quot;app-01&quot;</span> <span class="n">-VrssEnabled</span> <span class="nv">$true</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="c"># VrssEnabled = Virtual RSS = RSS внутри VM через dVMQ</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">dVMQ vs VMQ: Когда что использовать</p>
+<table>
+<thead>
+<tr>
+<th>Сценарий</th>
+<th>VMQ</th>
+<th>dVMQ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Много VM с низким трафиком (&lt; 1 Gbit/s каждая)</td>
+<td>Достаточно</td>
+<td>Overkill</td>
+</tr>
+<tr>
+<td>Мало VM с высоким трафиком (&gt; 5 Gbit/s)</td>
+<td>Bottleneck</td>
+<td>Необходим</td>
+</tr>
+<tr>
+<td>SQL Server в VM</td>
+<td>VMQ хватает</td>
+<td>dVMQ для OLTP</td>
+</tr>
+<tr>
+<td>.NET API с 10K+ RPS</td>
+<td>Не хватает</td>
+<td>Обязательно</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="85-receive-segment-coalescing-rsc-gro">Часть 8.5: Receive Segment Coalescing (RSC) — Пакетный GRO<a class="headerlink" href="#85-receive-segment-coalescing-rsc-gro" title="Permanent link">&para;</a></h2>
+<h3 id="_3">Проблема: Миллионы мелких пакетов<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>Каждый TCP ACK — ~60 байт. При 10 Gbit/s bulk transfer генерируется ~1 Mpps только ACK-ов. Каждый пакет = прерывание + DPC + NDIS traversal.</p>
+<h3 id="rsc">RSC: Склеиваем пакеты<a class="headerlink" href="#rsc" title="Permanent link">&para;</a></h3>
+<p>RSC (Windows-аналог Linux GRO) объединяет несколько TCP-сегментов в один большой перед передачей в <code>tcpip.sys</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Без RSC:                        С RSC:
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>Пакет 1 (1460 байт) → DPC      ┐
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>Пакет 2 (1460 байт) → DPC      ├→ Один &quot;пакет&quot; (43800 байт) → один DPC
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>Пакет 3 (1460 байт) → DPC      │
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>...                              │
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>Пакет 30 (1460 байт) → DPC     ┘
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>30 DPC вызовов → 1 DPC вызов = 30x меньше overhead
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c"># Проверить RSC</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nb">Get-NetAdapterRsc</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c"># IPv4Enabled : True</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c"># IPv6Enabled : True</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c"># Включить RSC</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="nb">Enable-NetAdapterRsc</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-IPv4</span> <span class="n">-IPv6</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c"># Статистика RSC (сколько пакетов склеено)</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="nb">Get-NetAdapterStatistics</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">|</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    <span class="nb">Select-Object</span> <span class="n">ReceivedUnicastPackets</span><span class="p">,</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>                  <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;CoalescedPackets&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">RscStatistics</span><span class="p">.</span><span class="n">CoalescedPackets</span><span class="p">}},</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>                  <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;CoalescedBytes&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">RscStatistics</span><span class="p">.</span><span class="n">CoalescedBytes</span><span class="p">}},</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>                  <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;CoalesceEvents&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">RscStatistics</span><span class="p">.</span><span class="n">CoalesceEvents</span><span class="p">}}</span>
+</code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">RSC убивает latency-sensitive приложения</p>
+<p>RSC накапливает пакеты перед передачей (coalescing window ~1ms).
+Для bulk transfer — отлично. Для low-latency (финансы, игры, RDP) —
+добавляет до 1ms задержки. <strong>Отключайте RSC на NIC для latency-sensitive VM.</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c"># Отключить RSC для конкретного адаптера</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nb">Disable-NetAdapterRsc</span> <span class="n">-Name</span> <span class="s2">&quot;RDP-NIC&quot;</span> <span class="n">-IPv4</span> <span class="n">-IPv6</span>
+</code></pre></div>
+</div>
+<hr />
+<h2 id="86-sr-iov-nuclear-option">Часть 8.6: SR-IOV — Обход гипервизора (Nuclear Option)<a class="headerlink" href="#86-sr-iov-nuclear-option" title="Permanent link">&para;</a></h2>
+<h3 id="vswitch-bottleneck">Проблема: vSwitch = bottleneck<a class="headerlink" href="#vswitch-bottleneck" title="Permanent link">&para;</a></h3>
+<p>Даже с VMQ/dVMQ пакеты проходят через Hyper-V vSwitch (software). Это добавляет ~10-50μs на пакет. При 1 Mpps = 10-50 секунд CPU time в секунду.</p>
+<h3 id="sr-iov-vm-nic">SR-IOV: Прямой доступ VM к NIC<a class="headerlink" href="#sr-iov-vm-nic" title="Permanent link">&para;</a></h3>
+<p><strong>Single Root I/O Virtualization</strong> позволяет NIC создать «виртуальные копии» самой себя (Virtual Functions — VF). Каждая VM получает <strong>прямой DMA-доступ</strong> к VF, минуя vSwitch полностью:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Без SR-IOV:                           С SR-IOV:
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>VM ←→ vSwitch ←→ NIC                  VM ←─── DMA ───→ NIC VF
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>      ↑ CPU!                                 ↑ Zero CPU!
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>Пакет проходит:                       Пакет проходит:
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>NIC → DMA → Host RAM →               NIC VF → DMA → VM RAM
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>  vSwitch (CPU) → VM RAM              (всё в hardware)
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>= ~30μs                               = ~3μs
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c"># === Проверка поддержки SR-IOV ===</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="c"># 1. NIC поддерживает?</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="nb">Get-NetAdapterSriov</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="c"># Enabled            : True</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="c"># NumVFs             : 64   ← максимум Virtual Functions</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="c"># SriovSupport       : Supported</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="c"># 2. BIOS/UEFI: VT-d (Intel) или AMD-Vi включён?</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="c"># Проверяем через systeminfo или:</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="nb">Get-CimInstance</span> <span class="n">-ClassName</span> <span class="n">Win32_Processor</span> <span class="p">|</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">VirtualizationFirmwareEnabled</span><span class="p">,</span> <span class="n">SecondLevelAddressTranslationExtensions</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="c"># VirtualizationFirmwareEnabled: True</span>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="c"># SecondLevelAddressTranslationExtensions: True (= IOMMU/VT-d)</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="c"># 3. Hyper-V vSwitch создан с поддержкой SR-IOV?</span>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="c"># ВАЖНО: SR-IOV нужно включить ПРИ СОЗДАНИИ vSwitch!</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="c"># Нельзя добавить потом.</span>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a><span class="nb">Get-VMSwitch</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">IovEnabled</span><span class="p">,</span> <span class="n">IovSupport</span><span class="p">,</span> <span class="n">IovSupportReasons</span>
+</code></pre></div>
+<h3 id="sr-iov">Включение SR-IOV<a class="headerlink" href="#sr-iov" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c"># Шаг 1: Создаём vSwitch с SR-IOV (если ещё не создан)</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c"># ВНИМАНИЕ: пересоздание vSwitch = downtime для всех VM на этом свитче!</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="nb">New-VMSwitch</span> <span class="n">-Name</span> <span class="s2">&quot;SRIOVSwitch&quot;</span> <span class="p">`</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">-NetAdapterName</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">`</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">-EnableIov</span> <span class="nv">$true</span> <span class="p">`</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="n">-AllowManagementOS</span> <span class="nv">$true</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="c"># Шаг 2: Включаем SR-IOV для VM</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="nb">Set-VMNetworkAdapter</span> <span class="n">-VMName</span> <span class="s2">&quot;app-01&quot;</span> <span class="p">`</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>    <span class="n">-IovWeight</span> <span class="n">100</span> <span class="p">`</span>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>    <span class="n">-IovQueuePairsRequested</span> <span class="n">4</span>  <span class="c"># 4 queue pairs = 4 RSS queues в VM</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="c"># Шаг 3: Проверяем, что VF назначена VM</span>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="nb">Get-VMNetworkAdapter</span> <span class="n">-VMName</span> <span class="s2">&quot;app-01&quot;</span> <span class="p">|</span>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>    <span class="nb">Select-Object</span> <span class="n">VMName</span><span class="p">,</span> <span class="n">IovWeight</span><span class="p">,</span> <span class="n">VirtualFunction</span><span class="p">,</span> <span class="n">SwitchName</span>
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a><span class="c"># Внутри VM: проверяем, что VF-драйвер загружен</span>
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a><span class="c"># (выполнять внутри VM)</span>
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a><span class="nb">Get-NetAdapter</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">InterfaceDescription</span> <span class="o">-match</span> <span class="s2">&quot;Virtual Function&quot;</span> <span class="p">}</span>
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a><span class="c"># Name        InterfaceDescription</span>
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a><span class="c"># ----        --------------------</span>
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a><span class="c"># Ethernet 2  Mellanox ConnectX-5 Virtual Function</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">SR-IOV Failover: Что происходит при Live Migration</p>
+<p>При Live Migration VM переносится на другой хост. VF <strong>не мигрирует</strong> —
+это hardware ресурс. Windows автоматически переключает VM на synthetic
+(software) datapath через vSwitch. Это вызывает:</p>
+<ol>
+<li><strong>Кратковременный разрыв</strong> (~1-3 секунды) — TCP переживёт (retransmit)</li>
+<li><strong>Деградацию производительности</strong> до переназначения VF на новом хосте</li>
+<li><strong>Возможное изменение MAC</strong> — если NIC на новом хосте другого вендора</li>
+</ol>
+<p>Проверить текущий datapath:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c"># Внутри VM:</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">Get-NetAdapter</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">Name</span><span class="p">,</span> <span class="n">InterfaceDescription</span><span class="p">,</span> <span class="n">Status</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="c"># Если &quot;Virtual Function&quot; в описании — SR-IOV active</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c"># Если &quot;Microsoft Hyper-V Network Adapter&quot; — synthetic (fallback)</span>
+</code></pre></div></p>
+</div>
+<hr />
+<h2 id="87-windows-filtering-platform-wfp">Часть 8.7: Windows Filtering Platform (WFP) — Файрвол изнутри<a class="headerlink" href="#87-windows-filtering-platform-wfp" title="Permanent link">&para;</a></h2>
+<h3 id="wfp">Архитектура WFP<a class="headerlink" href="#wfp" title="Permanent link">&para;</a></h3>
+<p>WFP — это не просто Windows Firewall. Это <strong>фреймворк</strong>, в который встраиваются все:
+- Windows Defender Firewall
+- IPsec
+- Антивирусы (CrowdStrike Falcon, Carbon Black)
+- VPN-клиенты (GlobalProtect, Cisco AnyConnect)
+- Network monitoring (Wireshark, NetMon)</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>                    WFP Architecture
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>┌─────────────────────────────────────────────┐
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>│               User Mode                      │
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>│  │ Firewall │  │   VPN    │  │   EDR    │  │
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>│  │  Service │  │ Client   │  │  Agent   │  │
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>│  └────┬─────┘  └────┬─────┘  └────┬─────┘  │
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>│       │              │              │        │
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>│  ┌────┴──────────────┴──────────────┴────┐  │
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>│  │     Base Filtering Engine (BFE)       │  │
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>│  │     (svchost.exe → bfe.dll)           │  │
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>│  └─────────────────┬────────────────────┘  │
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>├────────────────────┼────────────────────────┤
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a>│               Kernel Mode                    │
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a>│  ┌─────────────────┴────────────────────┐  │
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>│  │    WFP Callout Drivers               │  │
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>│  │    (fwpkclnt.sys, AV filter, etc.)   │  │
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>│  │                                       │  │
+<a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a>│  │    Layers (точки перехвата):          │  │
+<a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a>│  │    ├─ INBOUND_TRANSPORT (v4/v6)      │  │
+<a id="__codelineno-22-21" name="__codelineno-22-21" href="#__codelineno-22-21"></a>│  │    ├─ OUTBOUND_TRANSPORT             │  │
+<a id="__codelineno-22-22" name="__codelineno-22-22" href="#__codelineno-22-22"></a>│  │    ├─ INBOUND_NETWORK                │  │
+<a id="__codelineno-22-23" name="__codelineno-22-23" href="#__codelineno-22-23"></a>│  │    ├─ OUTBOUND_NETWORK               │  │
+<a id="__codelineno-22-24" name="__codelineno-22-24" href="#__codelineno-22-24"></a>│  │    ├─ FORWARD                        │  │
+<a id="__codelineno-22-25" name="__codelineno-22-25" href="#__codelineno-22-25"></a>│  │    ├─ ALE_AUTH_CONNECT               │  │
+<a id="__codelineno-22-26" name="__codelineno-22-26" href="#__codelineno-22-26"></a>│  │    ├─ ALE_AUTH_RECV_ACCEPT           │  │
+<a id="__codelineno-22-27" name="__codelineno-22-27" href="#__codelineno-22-27"></a>│  │    └─ STREAM (L7 inspection!)        │  │
+<a id="__codelineno-22-28" name="__codelineno-22-28" href="#__codelineno-22-28"></a>│  └──────────────────────────────────────┘  │
+<a id="__codelineno-22-29" name="__codelineno-22-29" href="#__codelineno-22-29"></a>└─────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="wfp_1">Диагностика WFP: Кто блокирует?<a class="headerlink" href="#wfp_1" title="Permanent link">&para;</a></h3>
+<p>Самая частая проблема: «порт открыт, приложение слушает, но клиент не может подключиться». Стандартный ответ — «проверьте файрвол». Но <strong>какой</strong> файрвол? WFP может иметь десятки callout drivers.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c"># === Шаг 1: Показать ВСЕ WFP filters ===</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c"># Это золотой инструмент. Показывает ВСЁ, что WFP проверяет.</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="n">netsh</span> <span class="n">wfp</span> <span class="n">show</span> <span class="n">filters</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="c"># Выход: XML файл с КАЖДЫМ правилом. Может быть 5000+ строк.</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="c"># Ищем блокирующие правила:</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="nb">Select-String</span> <span class="n">-Path</span> <span class="p">.\</span><span class="n">filters</span><span class="p">.</span><span class="n">xml</span> <span class="n">-Pattern</span> <span class="s2">&quot;action.*BLOCK&quot;</span> <span class="n">-Context</span> <span class="n">5</span><span class="p">,</span><span class="n">0</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="c"># === Шаг 2: WFP state dump ===</span>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="n">netsh</span> <span class="n">wfp</span> <span class="n">show</span> <span class="n">state</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>
+<a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a><span class="c"># === Шаг 3: Аудит WFP в реальном времени ===</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a><span class="c"># Включаем WFP audit log</span>
+<a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="n">auditpol</span> <span class="p">/</span><span class="nb">set </span><span class="p">/</span><span class="n">subcategory</span><span class="p">:</span><span class="s2">&quot;Filtering Platform Packet Drop&quot;</span> <span class="p">/</span><span class="n">success</span><span class="p">:</span><span class="n">enable</span> <span class="p">/</span><span class="n">failure</span><span class="p">:</span><span class="n">enable</span>
+<a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a><span class="n">auditpol</span> <span class="p">/</span><span class="nb">set </span><span class="p">/</span><span class="n">subcategory</span><span class="p">:</span><span class="s2">&quot;Filtering Platform Connection&quot;</span> <span class="p">/</span><span class="n">success</span><span class="p">:</span><span class="n">enable</span> <span class="p">/</span><span class="n">failure</span><span class="p">:</span><span class="n">enable</span>
+<a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>
+<a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a><span class="c"># Смотрим в Security Event Log:</span>
+<a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a><span class="nb">Get-WinEvent</span> <span class="n">-LogName</span> <span class="n">Security</span> <span class="n">-FilterXPath</span> <span class="s2">&quot;*[System[EventID=5157]]&quot;</span> <span class="n">-MaxEvents</span> <span class="n">10</span> <span class="p">|</span>
+<a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a>    <span class="nb">Format-List</span> <span class="n">TimeCreated</span><span class="p">,</span> <span class="n">Message</span>
+<a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a><span class="c"># Event 5157 = WFP blocked a connection</span>
+<a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a><span class="c"># Event 5156 = WFP allowed a connection</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Найти виновника: Filter ID → Driver</p>
+<p>Когда WFP аудит показывает Block с Filter ID, найти, кто создал фильтр:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c"># Дамп всех фильтров в файл</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">netsh</span> <span class="n">wfp</span> <span class="n">show</span> <span class="n">filters</span> <span class="n">file</span><span class="p">=</span><span class="n">wfp_filters</span><span class="p">.</span><span class="n">xml</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="c"># Ищем Filter ID из Event Log (например, 12345)</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="nb">Select-String</span> <span class="n">-Path</span> <span class="n">wfp_filters</span><span class="p">.</span><span class="n">xml</span> <span class="n">-Pattern</span> <span class="s2">&quot;filterId.*12345&quot;</span> <span class="n">-Context</span> <span class="n">0</span><span class="p">,</span><span class="n">20</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="c"># providerKey покажет GUID вендора</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="c"># Погуглите GUID → найдёте: CrowdStrike / Palo Alto GP / etc.</span>
+</code></pre></div></p>
+</div>
+<h3 id="edr-wfp">EDR-агенты в WFP: Скрытый убийца производительности<a class="headerlink" href="#edr-wfp" title="Permanent link">&para;</a></h3>
+<p>90% необъяснимых сетевых задержек на корпоративных машинах создают <strong>EDR-агенты</strong> (CrowdStrike Falcon, Microsoft Defender for Endpoint, Carbon Black, Kaspersky), которые регистрируют <strong>WFP callout drivers</strong> на каждом уровне стека.</p>
+<p><strong>Как EDR замедляет сеть:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>Каждый пакет (и входящий, и исходящий) проходит цепочку:
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>  Пакет → NDIS miniport
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>       → WFP INBOUND_NETWORK callout (EDR: проверка IP-репутации)
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>       → WFP INBOUND_TRANSPORT callout (EDR: DPI, сигнатуры)
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>       → WFP ALE_AUTH_RECV_ACCEPT callout (EDR: проверка процесса)
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>       → WFP STREAM callout (EDR: инспекция payload — TLS intercept!)
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>       → TCP/IP стек → приложение
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>Каждый callout — это синхронный вызов в kernel mode.
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>При 100K пакетов/сек даже 1µs на callout = 100ms/сек CPU overhead.
+</code></pre></div>
+<p><strong>Диагностика: Какой EDR тормозит</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c"># === Шаг 1: Найти все WFP callout drivers ===</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="n">netsh</span> <span class="n">wfp</span> <span class="n">show</span> <span class="n">state</span> <span class="n">file</span><span class="p">=</span><span class="n">wfp_state</span><span class="p">.</span><span class="n">xml</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="nb">Select-String</span> <span class="n">-Path</span> <span class="n">wfp_state</span><span class="p">.</span><span class="n">xml</span> <span class="n">-Pattern</span> <span class="s2">&quot;callout&quot;</span> <span class="n">-Context</span> <span class="n">0</span><span class="p">,</span><span class="n">5</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="c"># === Шаг 2: Посмотреть загруженные WFP filter drivers ===</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="n">fltMC</span><span class="p">.</span><span class="n">exe</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="c"># Если видите csagent.sys (CrowdStrike), klif.sys (Kaspersky),</span>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="c"># WdFilter.sys (Defender) — это ваши подозреваемые.</span>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a><span class="c"># === Шаг 3: Измерить DPC/ISR latency от callout drivers ===</span>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a><span class="c"># Скачайте xperf (Windows ADK) или используйте WPA:</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a><span class="n">xperf</span> <span class="n">-on</span> <span class="n">PROC_THREAD</span><span class="p">+</span><span class="n">LOADER</span><span class="p">+</span><span class="n">DPC</span><span class="p">+</span><span class="n">INTERRUPT</span> <span class="n">-stackwalk</span> <span class="n">DPC</span><span class="p">+</span><span class="n">INTERRUPT</span>
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a><span class="c"># Подождите 30 секунд под нагрузкой</span>
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a><span class="n">xperf</span> <span class="n">-d</span> <span class="n">callout_trace</span><span class="p">.</span><span class="n">etl</span>
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a><span class="c"># Откройте в WPA → DPC/ISR → Sort by Duration</span>
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a><span class="c"># Ищите DPC с module = csagent.sys / klif.sys / WdFilter.sys</span>
+<a id="__codelineno-26-17" name="__codelineno-26-17" href="#__codelineno-26-17"></a>
+<a id="__codelineno-26-18" name="__codelineno-26-18" href="#__codelineno-26-18"></a><span class="c"># === Шаг 4: Быстрый тест — отключение и сравнение ===</span>
+<a id="__codelineno-26-19" name="__codelineno-26-19" href="#__codelineno-26-19"></a><span class="c"># ТОЛЬКО в тестовой среде! Временно отключаем WFP netevents:</span>
+<a id="__codelineno-26-20" name="__codelineno-26-20" href="#__codelineno-26-20"></a><span class="n">netsh</span> <span class="n">wfp</span> <span class="nb">set </span><span class="n">options</span> <span class="n">netevents</span> <span class="p">=</span> <span class="n">off</span>
+<a id="__codelineno-26-21" name="__codelineno-26-21" href="#__codelineno-26-21"></a><span class="c"># Запускаем бенчмарк (iperf3) до и после</span>
+<a id="__codelineno-26-22" name="__codelineno-26-22" href="#__codelineno-26-22"></a><span class="c"># Разница &gt; 15%? Callout driver — виновник.</span>
+</code></pre></div>
+<p><strong>Production workaround (не отключая EDR):</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c"># Исключения для высоконагруженных процессов</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="c"># CrowdStrike: Falcon console → Exclusions → Process: sqlservr.exe, w3wp.exe</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="c"># Defender:</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="nb">Add-MpPreference</span> <span class="n">-ExclusionProcess</span> <span class="s2">&quot;sqlservr.exe&quot;</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="nb">Add-MpPreference</span> <span class="n">-ExclusionProcess</span> <span class="s2">&quot;w3wp.exe&quot;</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="c"># Перенос инспекции на уровень NETWORK (дешевле, чем STREAM):</span>
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a><span class="c"># Попросите вендора EDR отключить STREAM-level inspection для серверов</span>
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a><span class="c"># (L7 DPI на SQL-сервере, обрабатывающем 50K запросов/сек — безумие)</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Реальный кейс:</strong>
+SQL Server: 50K TCP-соединений, latency p99 = 45ms. После обновления
+CrowdStrike Falcon sensor (новая версия добавила STREAM callout для
+TLS inspection) — p99 скакнул до 120ms. В <code>xperf</code> trace:
+<code>csagent.sys</code> DPC занимал 35% CPU на каждом ядре.
+Решение: исключение <code>sqlservr.exe</code> в Falcon console → p99 вернулся к 48ms.</p>
+</blockquote>
+<h3 id="pktmon-packet-sniffer-windows-server-2019">pktmon: Встроенный packet sniffer (Windows Server 2019+)<a class="headerlink" href="#pktmon-packet-sniffer-windows-server-2019" title="Permanent link">&para;</a></h3>
+<p><code>pktmon</code> — встроенный аналог <code>tcpdump</code>, работающий на <strong>всех уровнях</strong> стека. Показывает, где именно пакет дропается.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c"># Показать все компоненты NDIS-стека</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="n">pktmon</span> <span class="n">list</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="c"># ID   Name                          Type</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="c"># --   ----                          ----</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="c"># 1    Ethernet0                     Network adapter</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="c"># 2    ms_wfplwf_lower               NDIS LWF</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="c"># 3    ms_ndiswan                    NDIS LWF</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a><span class="c"># 4    vmswitch                      NDIS LWF</span>
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a><span class="c"># ...</span>
+<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>
+<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a><span class="c"># Мониторим ДРОПЫ по всему стеку</span>
+<a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a><span class="n">pktmon</span> <span class="nb">start </span><span class="p">-</span><span class="n">-capture</span> <span class="p">-</span><span class="n">-pkt-size</span> <span class="n">0</span> <span class="p">-</span><span class="n">-comp</span> <span class="n">all</span> <span class="p">-</span><span class="n">-type</span> <span class="n">drop</span>
+<a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>
+<a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a><span class="c"># Генерируем трафик... ждём...</span>
+<a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>
+<a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a><span class="n">pktmon</span> <span class="n">stop</span>
+<a id="__codelineno-28-17" name="__codelineno-28-17" href="#__codelineno-28-17"></a>
+<a id="__codelineno-28-18" name="__codelineno-28-18" href="#__codelineno-28-18"></a><span class="c"># Анализируем: ГДЕ дропнулся пакет</span>
+<a id="__codelineno-28-19" name="__codelineno-28-19" href="#__codelineno-28-19"></a><span class="n">pktmon</span> <span class="n">format</span> <span class="n">PktMon</span><span class="p">.</span><span class="n">etl</span> <span class="n">-o</span> <span class="n">drops</span><span class="p">.</span><span class="n">txt</span>
+<a id="__codelineno-28-20" name="__codelineno-28-20" href="#__codelineno-28-20"></a><span class="c"># Каждый дроп покажет: компонент, причину, timestamp</span>
+<a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a>
+<a id="__codelineno-28-22" name="__codelineno-28-22" href="#__codelineno-28-22"></a><span class="c"># Конвертируем в pcapng для Wireshark</span>
+<a id="__codelineno-28-23" name="__codelineno-28-23" href="#__codelineno-28-23"></a><span class="n">pktmon</span> <span class="n">pcapng</span> <span class="n">PktMon</span><span class="p">.</span><span class="n">etl</span> <span class="n">-o</span> <span class="n">capture</span><span class="p">.</span><span class="n">pcapng</span>
+</code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">pktmon vs Wireshark: Критическая разница</p>
+<p>Wireshark (через npcap) перехватывает пакеты <strong>после</strong> NDIS miniport —
+он видит только то, что прошло драйвер. Если пакет дропается в
+hardware (RSS mismatch, VMQ error) или в filter driver ДО точки перехвата
+Wireshark — вы его <strong>не увидите</strong>.</p>
+<p><code>pktmon</code> работает на <strong>каждом уровне</strong> NDIS стека. Он покажет:
+- Пакет пришёл в miniport → ✓
+- Передан в WFP filter → ✓
+- <strong>Дропнут WFP</strong> → ✗ (с причиной!)</p>
+<p>Для серьёзной диагностики — всегда <code>pktmon</code>, не Wireshark.</p>
+</div>
+<hr />
+<h2 id="88-tcpipsys-tcpip-windows">Часть 8.8: tcpip.sys — TCP/IP стек Windows изнутри<a class="headerlink" href="#88-tcpipsys-tcpip-windows" title="Permanent link">&para;</a></h2>
+<h3 id="congestion-control-windows">Congestion Control в Windows<a class="headerlink" href="#congestion-control-windows" title="Permanent link">&para;</a></h3>
+<p>Windows поддерживает несколько алгоритмов:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c"># Текущий алгоритм</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="nb">Get-NetTCPSetting</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">SettingName</span><span class="p">,</span> <span class="n">CongestionProvider</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="c"># SettingName  CongestionProvider</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c"># Internet     CUBIC          ← для интернет-трафика</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a><span class="c"># Datacenter   CUBIC          ← для дата-центра</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="c"># Compat       NewReno        ← совместимость</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="c"># Custom       DCTCP          ← если настроено</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a><span class="c"># Переключить на CUBIC (по умолчанию с Windows Server 2019)</span>
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Internet&quot;</span> <span class="n">-CongestionProvider</span> <span class="n">CUBIC</span>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a>
+<a id="__codelineno-29-12" name="__codelineno-29-12" href="#__codelineno-29-12"></a><span class="c"># DCTCP для дата-центров (требует ECN на всём пути)</span>
+<a id="__codelineno-29-13" name="__codelineno-29-13" href="#__codelineno-29-13"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Datacenter&quot;</span> <span class="n">-CongestionProvider</span> <span class="n">DCTCP</span>
+<a id="__codelineno-29-14" name="__codelineno-29-14" href="#__codelineno-29-14"></a>
+<a id="__codelineno-29-15" name="__codelineno-29-15" href="#__codelineno-29-15"></a><span class="c"># Включить ECN (необходимо для DCTCP)</span>
+<a id="__codelineno-29-16" name="__codelineno-29-16" href="#__codelineno-29-16"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Datacenter&quot;</span> <span class="n">-EcnCapability</span> <span class="n">Enabled</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Windows НЕ поддерживает BBR</p>
+<p>В отличие от Linux, Windows не имеет BBR. Для Windows-серверов в
+интернете это означает ~10-15% меньшую пропускную способность на
+каналах с потерями по сравнению с Linux + BBR.
+Альтернатива: LEDBAT (Low Extra Delay Background Transport) для
+фоновых задач (WSUS, SCCM).
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Internet&quot;</span> <span class="n">-CongestionProvider</span> <span class="n">LEDBAT</span>
+</code></pre></div></p>
+</div>
+<h3 id="tcp-powershell">TCP-параметры через PowerShell<a class="headerlink" href="#tcp-powershell" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c"># Все TCP settings</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="nb">Get-NetTCPSetting</span> <span class="p">|</span> <span class="nb">Format-List</span> <span class="p">*</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="c"># Ключевые параметры:</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="c"># AutoTuningLevelLocal : Normal (автоматическая настройка window size)</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="c"># ScalingHeuristics    : Disabled (не уменьшать window после проблем)</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a><span class="c"># InitialCongestionWindow : 10 (начальное окно в MSS — RFC 6928)</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="c"># InitialRto           : 1000ms (начальный RTO)</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a><span class="c"># MinRto               : 300ms  (минимальный RTO)</span>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a><span class="c"># MaxSynRetransmissions : 2 (SYN retry)</span>
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a><span class="c"># DelayedAckTimeout    : 40ms</span>
+<a id="__codelineno-31-12" name="__codelineno-31-12" href="#__codelineno-31-12"></a>
+<a id="__codelineno-31-13" name="__codelineno-31-13" href="#__codelineno-31-13"></a><span class="c"># Увеличить Initial Congestion Window (для быстрого старта)</span>
+<a id="__codelineno-31-14" name="__codelineno-31-14" href="#__codelineno-31-14"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Internet&quot;</span> <span class="n">-InitialCongestionWindow</span> <span class="n">20</span>
+<a id="__codelineno-31-15" name="__codelineno-31-15" href="#__codelineno-31-15"></a>
+<a id="__codelineno-31-16" name="__codelineno-31-16" href="#__codelineno-31-16"></a><span class="c"># Отключить Nagle (для low-latency)</span>
+<a id="__codelineno-31-17" name="__codelineno-31-17" href="#__codelineno-31-17"></a><span class="c"># На уровне стека нельзя, только в приложении:</span>
+<a id="__codelineno-31-18" name="__codelineno-31-18" href="#__codelineno-31-18"></a><span class="c"># socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);</span>
+<a id="__codelineno-31-19" name="__codelineno-31-19" href="#__codelineno-31-19"></a>
+<a id="__codelineno-31-20" name="__codelineno-31-20" href="#__codelineno-31-20"></a><span class="c"># Autotuning — автоматическая настройка receive window</span>
+<a id="__codelineno-31-21" name="__codelineno-31-21" href="#__codelineno-31-21"></a><span class="c"># Normal = масштабируется до 16MB</span>
+<a id="__codelineno-31-22" name="__codelineno-31-22" href="#__codelineno-31-22"></a><span class="c"># Disabled = фиксированный 64KB (НИКОГДА не делайте на серверах!)</span>
+<a id="__codelineno-31-23" name="__codelineno-31-23" href="#__codelineno-31-23"></a><span class="nb">Set-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Internet&quot;</span> <span class="n">-AutoTuningLevelLocal</span> <span class="n">Normal</span>
+</code></pre></div>
+<h3 id="afdsys-ancillary-function-driver">AFD.sys — Ancillary Function Driver<a class="headerlink" href="#afdsys-ancillary-function-driver" title="Permanent link">&para;</a></h3>
+<p>AFD.sys — мост между Winsock (user mode) и tcpip.sys (kernel). Управляет:
+- Socket buffers (send/receive)
+- Completion ports (IOCP)
+- Poll/select operations
+- Buffer management</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="c"># Посмотреть AFD-параметры</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="nb">Get-ItemProperty</span> <span class="n">-Path</span> <span class="s2">&quot;HKLM:\SYSTEM\CurrentControlSet\Services\AFD\Parameters&quot;</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="c"># DefaultReceiveWindow : 65536 (по умолчанию — маловато для 10GbE)</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="c"># DefaultSendWindow    : 65536</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="c"># Увеличить буферы AFD (для высоконагруженных .NET-сервисов)</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="nb">Set-ItemProperty</span> <span class="n">-Path</span> <span class="s2">&quot;HKLM:\SYSTEM\CurrentControlSet\Services\AFD\Parameters&quot;</span> <span class="p">`</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>    <span class="n">-Name</span> <span class="s2">&quot;DefaultReceiveWindow&quot;</span> <span class="n">-Value</span> <span class="n">1048576</span> <span class="n">-Type</span> <span class="n">DWord</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="nb">Set-ItemProperty</span> <span class="n">-Path</span> <span class="s2">&quot;HKLM:\SYSTEM\CurrentControlSet\Services\AFD\Parameters&quot;</span> <span class="p">`</span>
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a>    <span class="n">-Name</span> <span class="s2">&quot;DefaultSendWindow&quot;</span> <span class="n">-Value</span> <span class="n">1048576</span> <span class="n">-Type</span> <span class="n">DWord</span>
+<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="c"># Требует перезагрузки!</span>
+</code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">AFD connection limit: Скрытый лимит</p>
+<p>AFD имеет лимит на количество одновременных non-paged pool allocations.
+При 10K+ одновременных TCP-соединений AFD может исчерпать non-paged pool.</p>
+<p>Диагностика:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="c"># Проверить non-paged pool usage</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="nb">Get-Counter</span> <span class="s1">&#39;\Memory\Pool Nonpaged Bytes&#39;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">3</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="c"># Кто потребляет pool? (Sysinternals poolmon или:)</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a><span class="c"># В WinDbg (на memory dump):</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="c"># !poolused 2</span>
+<a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a><span class="c"># Tag   Allocs  Frees   Diff    Used</span>
+<a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a><span class="c"># AFD   450321  449800  521     5242880</span>
+<a id="__codelineno-33-9" name="__codelineno-33-9" href="#__codelineno-33-9"></a><span class="c">#                       ^^^ 521 outstanding AFD allocations</span>
+</code></pre></div></p>
+</div>
+<hr />
+<h2 id="89-etw-xperf-wpa">Часть 8.9: Хирургическая диагностика — ETW, xperf, WPA<a class="headerlink" href="#89-etw-xperf-wpa" title="Permanent link">&para;</a></h2>
+<h3 id="etw-event-tracing-for-windows">ETW: Event Tracing for Windows<a class="headerlink" href="#etw-event-tracing-for-windows" title="Permanent link">&para;</a></h3>
+<p>ETW — это <strong>the</strong> инструмент диагностики в Windows. Не Event Log (это журнал для админов), а <strong>kernel-level трассировка</strong> с наносекундной точностью.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="c"># === Сетевая трассировка с ETW ===</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="c"># Полная сетевая трассировка (все провайдеры)</span>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="n">capture</span><span class="p">=</span><span class="n">yes</span> <span class="p">`</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    <span class="n">scenario</span><span class="p">=</span><span class="n">NetConnection</span> <span class="p">`</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>    <span class="n">tracefile</span><span class="p">=</span><span class="n">C</span><span class="p">:\</span><span class="n">traces</span><span class="p">\</span><span class="n">net_diag</span><span class="p">.</span><span class="n">etl</span> <span class="p">`</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>    <span class="n">maxSize</span><span class="p">=</span><span class="n">1024</span> <span class="p">`</span>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>    <span class="n">fileMode</span><span class="p">=</span><span class="n">circular</span> <span class="p">`</span>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>    <span class="n">overwrite</span><span class="p">=</span><span class="n">yes</span>
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a><span class="c"># Подождать, пока проблема воспроизведётся...</span>
+<a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>
+<a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="n">stop</span>
+<a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a><span class="c"># Анализ в Windows Performance Analyzer (WPA) или Network Monitor</span>
+<a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>
+<a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a><span class="c"># === Целевая трассировка: только TCP retransmits ===</span>
+<a id="__codelineno-34-17" name="__codelineno-34-17" href="#__codelineno-34-17"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="p">`</span>
+<a id="__codelineno-34-18" name="__codelineno-34-18" href="#__codelineno-34-18"></a>    <span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Windows-TCPIP</span> <span class="n">level</span><span class="p">=</span><span class="n">5</span> <span class="n">keywords</span><span class="p">=</span><span class="n">0xFFFFFFFF</span> <span class="p">`</span>
+<a id="__codelineno-34-19" name="__codelineno-34-19" href="#__codelineno-34-19"></a>    <span class="n">tracefile</span><span class="p">=</span><span class="n">C</span><span class="p">:\</span><span class="n">traces</span><span class="p">\</span><span class="n">tcp_retrans</span><span class="p">.</span><span class="n">etl</span> <span class="p">`</span>
+<a id="__codelineno-34-20" name="__codelineno-34-20" href="#__codelineno-34-20"></a>    <span class="n">maxSize</span><span class="p">=</span><span class="n">256</span>
+<a id="__codelineno-34-21" name="__codelineno-34-21" href="#__codelineno-34-21"></a>
+<a id="__codelineno-34-22" name="__codelineno-34-22" href="#__codelineno-34-22"></a><span class="c"># === Трассировка NDIS (пакеты + drops) ===</span>
+<a id="__codelineno-34-23" name="__codelineno-34-23" href="#__codelineno-34-23"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="p">`</span>
+<a id="__codelineno-34-24" name="__codelineno-34-24" href="#__codelineno-34-24"></a>    <span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Windows-NDIS-PacketCapture</span> <span class="n">level</span><span class="p">=</span><span class="n">5</span> <span class="p">`</span>
+<a id="__codelineno-34-25" name="__codelineno-34-25" href="#__codelineno-34-25"></a>    <span class="n">tracefile</span><span class="p">=</span><span class="n">C</span><span class="p">:\</span><span class="n">traces</span><span class="p">\</span><span class="n">ndis_drops</span><span class="p">.</span><span class="n">etl</span> <span class="p">`</span>
+<a id="__codelineno-34-26" name="__codelineno-34-26" href="#__codelineno-34-26"></a>    <span class="n">maxSize</span><span class="p">=</span><span class="n">512</span>
+</code></pre></div>
+<h3 id="dpcisr-system-cpu">Анализ DPC/ISR — Когда "System" ест CPU<a class="headerlink" href="#dpcisr-system-cpu" title="Permanent link">&para;</a></h3>
+<p>Частая жалоба: «Процесс System потребляет 30% CPU». System — это ядро. Внутри него — DPC (Deferred Procedure Calls) и ISR (Interrupt Service Routines) от сетевых драйверов.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="c"># === Шаг 1: Кто генерирует DPC? ===</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="c"># xperf (из Windows Performance Toolkit)</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="n">xperf</span> <span class="n">-on</span> <span class="n">PROC_THREAD</span><span class="p">+</span><span class="n">LOADER</span><span class="p">+</span><span class="n">INTERRUPT</span><span class="p">+</span><span class="n">DPC</span><span class="p">+</span><span class="n">PROFILE</span> <span class="n">-stackwalk</span> <span class="n">DPC</span><span class="p">+</span><span class="n">ISR</span>
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a><span class="c"># Воспроизводим проблему (~30 секунд)</span>
+<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>
+<a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a><span class="n">xperf</span> <span class="n">-d</span> <span class="n">dpc_analysis</span><span class="p">.</span><span class="n">etl</span>
+<a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>
+<a id="__codelineno-35-9" name="__codelineno-35-9" href="#__codelineno-35-9"></a><span class="c"># Открываем в WPA (Windows Performance Analyzer):</span>
+<a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a><span class="c"># Graph: DPC/ISR → Summary Table → Stack → Module</span>
+<a id="__codelineno-35-11" name="__codelineno-35-11" href="#__codelineno-35-11"></a><span class="c"># Ищем: какой .sys файл генерирует больше всего DPC</span>
+<a id="__codelineno-35-12" name="__codelineno-35-12" href="#__codelineno-35-12"></a>
+<a id="__codelineno-35-13" name="__codelineno-35-13" href="#__codelineno-35-13"></a><span class="c"># Типичные виновники:</span>
+<a id="__codelineno-35-14" name="__codelineno-35-14" href="#__codelineno-35-14"></a><span class="c"># ndis.sys / e1d65x64.sys → RSS misconfiguration</span>
+<a id="__codelineno-35-15" name="__codelineno-35-15" href="#__codelineno-35-15"></a><span class="c"># tcpip.sys → TCP retransmissions flood</span>
+<a id="__codelineno-35-16" name="__codelineno-35-16" href="#__codelineno-35-16"></a><span class="c"># storport.sys → Disk I/O (не сеть)</span>
+<a id="__codelineno-35-17" name="__codelineno-35-17" href="#__codelineno-35-17"></a><span class="c"># dxgkrnl.sys → GPU (не сеть)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="c"># === Шаг 2: Быстрая проверка без xperf ===</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="c"># Sysinternals Process Explorer → System process → Threads tab</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="c"># Sort by CPU → Покажет, какой драйвер (.sys) потребляет CPU</span>
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="c"># Или через PowerShell + Performance Counters</span>
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a><span class="nb">Get-Counter</span> <span class="s1">&#39;\Processor Information(*)\% DPC Time&#39;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">10</span> <span class="p">|</span>
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>    <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span>
+<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>        <span class="nv">$_</span><span class="p">.</span><span class="n">CounterSamples</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span> <span class="o">-gt</span> <span class="n">10</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a>            <span class="nb">Select-Object</span> <span class="n">InstanceName</span><span class="p">,</span>
+<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a>                <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;DPC%&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="no">[math]</span><span class="p">::</span><span class="n">Round</span><span class="p">(</span><span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span><span class="p">,</span><span class="n">2</span><span class="p">)}}</span>
+<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a>    <span class="p">}</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">DPC Watchdog: Когда DPC длится слишком долго</p>
+<p>Windows имеет DPC Watchdog — если один DPC выполняется дольше 100ms,
+система генерирует bugcheck (BSOD) <strong>DPC_WATCHDOG_VIOLATION</strong> (0x133).</p>
+<p>Частая причина: NIC miniport driver обрабатывает слишком много пакетов
+в одном DPC (RSS сломан → все пакеты на одном ядре).</p>
+<p>Диагностика (из crash dump):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a># WinDbg
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>!analyze -v
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a># Покажет: какой DPC routine, в каком драйвере
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a># Stack trace:
+<a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a># nt!KiRetireDpcList
+<a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a># ndis!ndisMDpcX
+<a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a># e1d65x64!RxDpc        ← miniport driver Intel NIC
+</code></pre></div></p>
+</div>
+<h3 id="procdump-windbg">Procdump + WinDbg: Анализ дампов<a class="headerlink" href="#procdump-windbg" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c"># === Memory leak в сетевом стеке ===</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="c"># Снимаем дамп при высоком потреблении памяти</span>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="c"># Procdump (Sysinternals) — по порогу committed memory</span>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="n">procdump</span> <span class="n">-ma</span> <span class="n">-m</span> <span class="n">2048</span> <span class="n">System</span>  <span class="c"># Дамп System при &gt; 2GB committed</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a><span class="c"># Или полный kernel dump</span>
+<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="c"># В WinDbg:</span>
+<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a><span class="c"># !poolused 2       → какие тэги pool потребляют память</span>
+<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a><span class="c"># !poolfind AfdC    → найти все AFD connection objects</span>
+<a id="__codelineno-38-11" name="__codelineno-38-11" href="#__codelineno-38-11"></a><span class="c"># !ndiskd.miniport  → информация о NDIS miniport</span>
+<a id="__codelineno-38-12" name="__codelineno-38-12" href="#__codelineno-38-12"></a><span class="c"># !ndiskd.nbl       → все NET_BUFFER_LIST в системе</span>
+<a id="__codelineno-38-13" name="__codelineno-38-13" href="#__codelineno-38-13"></a><span class="c"># !ndiskd.filters   → NDIS filter chain</span>
+</code></pre></div>
+<hr />
+<h2 id="810-hardcore-lab-chaos-engineering-windows">Часть 8.10: Hardcore Lab — Chaos Engineering на Windows<a class="headerlink" href="#810-hardcore-lab-chaos-engineering-windows" title="Permanent link">&para;</a></h2>
+<h3 id="hyper-v">Сценарий: Диагностика «медленной сети» на Hyper-V хосте<a class="headerlink" href="#hyper-v" title="Permanent link">&para;</a></h3>
+<p><strong>Симптомы:</strong> VM app-01 (Windows Server, .NET API) показывает p99 latency 500ms+ при обращении к SQL Server в другой VM. Throughput упал с 8 Gbit/s до 2 Gbit/s. PerfMon «всё нормально».</p>
+<h3 id="1">Шаг 1: Воспроизводим проблему<a class="headerlink" href="#1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="c"># На Hyper-V хосте: Ломаем RSS</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a><span class="c"># Отключаем RSS на NIC (имитируем misconfiguration после обновления драйвера)</span>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-Enabled</span> <span class="nv">$false</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a>
+<a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a><span class="c"># Отключаем VMQ</span>
+<a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a><span class="nb">Set-NetAdapterVmq</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="n">-Enabled</span> <span class="nv">$false</span>
+<a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>
+<a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a><span class="c"># Добавляем WFP filter, который тормозит (имитация тяжёлого антивируса)</span>
+<a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a><span class="c"># Создаём правило с аудитом каждого пакета</span>
+<a id="__codelineno-39-11" name="__codelineno-39-11" href="#__codelineno-39-11"></a><span class="nb">New-NetFirewallRule</span> <span class="n">-DisplayName</span> <span class="s2">&quot;CHAOS_AUDIT&quot;</span> <span class="p">`</span>
+<a id="__codelineno-39-12" name="__codelineno-39-12" href="#__codelineno-39-12"></a>    <span class="n">-Direction</span> <span class="n">Inbound</span> <span class="n">-Action</span> <span class="n">Allow</span> <span class="p">`</span>
+<a id="__codelineno-39-13" name="__codelineno-39-13" href="#__codelineno-39-13"></a>    <span class="n">-Protocol</span> <span class="n">TCP</span> <span class="n">-LocalPort</span> <span class="n">1433</span> <span class="p">`</span>
+<a id="__codelineno-39-14" name="__codelineno-39-14" href="#__codelineno-39-14"></a>    <span class="n">-Profile</span> <span class="n">Any</span> <span class="p">`</span>
+<a id="__codelineno-39-15" name="__codelineno-39-15" href="#__codelineno-39-15"></a>    <span class="n">-Enabled</span> <span class="n">True</span>
+<a id="__codelineno-39-16" name="__codelineno-39-16" href="#__codelineno-39-16"></a><span class="c"># + включаем WFP аудит</span>
+<a id="__codelineno-39-17" name="__codelineno-39-17" href="#__codelineno-39-17"></a><span class="n">auditpol</span> <span class="p">/</span><span class="nb">set </span><span class="p">/</span><span class="n">subcategory</span><span class="p">:</span><span class="s2">&quot;Filtering Platform Connection&quot;</span> <span class="p">/</span><span class="n">success</span><span class="p">:</span><span class="n">enable</span>
+</code></pre></div>
+<h3 id="2">Шаг 2: Наблюдаем деградацию<a class="headerlink" href="#2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="c"># В VM app-01: измеряем baseline</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="n">iperf3</span> <span class="n">-c</span> <span class="n">172</span><span class="p">.</span><span class="n">16</span><span class="p">.</span><span class="n">2</span><span class="p">.</span><span class="n">20</span> <span class="n">-t</span> <span class="n">30</span> <span class="n">-P</span> <span class="n">4</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="c"># Ожидаем: ~2 Gbit/s (вместо 8 Gbit/s)</span>
+<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>
+<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a><span class="c"># Проверяем DPC distribution</span>
+<a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a><span class="nb">Get-Counter</span> <span class="s1">&#39;\Processor(*)\% DPC Time&#39;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">5</span> <span class="p">|</span>
+<a id="__codelineno-40-7" name="__codelineno-40-7" href="#__codelineno-40-7"></a>    <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span>
+<a id="__codelineno-40-8" name="__codelineno-40-8" href="#__codelineno-40-8"></a>        <span class="nv">$_</span><span class="p">.</span><span class="n">CounterSamples</span> <span class="p">|</span> <span class="nb">Sort-Object</span> <span class="n">CookedValue</span> <span class="n">-Descending</span> <span class="p">|</span>
+<a id="__codelineno-40-9" name="__codelineno-40-9" href="#__codelineno-40-9"></a>            <span class="nb">Select-Object</span> <span class="n">-First</span> <span class="n">4</span> <span class="n">InstanceName</span><span class="p">,</span>
+<a id="__codelineno-40-10" name="__codelineno-40-10" href="#__codelineno-40-10"></a>                <span class="p">@{</span><span class="n">N</span><span class="p">=</span><span class="s2">&quot;DPC%&quot;</span><span class="p">;</span><span class="n">E</span><span class="p">={</span><span class="no">[math]</span><span class="p">::</span><span class="n">Round</span><span class="p">(</span><span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span><span class="p">,</span><span class="n">1</span><span class="p">)}}</span>
+<a id="__codelineno-40-11" name="__codelineno-40-11" href="#__codelineno-40-11"></a>    <span class="p">}</span>
+<a id="__codelineno-40-12" name="__codelineno-40-12" href="#__codelineno-40-12"></a><span class="c"># РЕЗУЛЬТАТ: CPU 0 → 45% DPC, остальные → 0%</span>
+<a id="__codelineno-40-13" name="__codelineno-40-13" href="#__codelineno-40-13"></a><span class="c"># ДИАГНОЗ: все сетевые DPC на одном ядре → RSS отключён</span>
+</code></pre></div>
+<h3 id="3-root-cause">Шаг 3: Находим root cause<a class="headerlink" href="#3-root-cause" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c"># Проверяем RSS</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="nb">Get-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="c"># Enabled: False ← ROOT CAUSE #1</span>
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a><span class="c"># Проверяем VMQ</span>
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="nb">Get-NetAdapterVmq</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a><span class="c"># Enabled: False ← ROOT CAUSE #2</span>
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>
+<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="c"># Проверяем WFP overhead</span>
+<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a><span class="nb">Get-Counter</span> <span class="s1">&#39;\WFP*\*&#39;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">3</span>
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="c"># Если WFP Classify Operations/sec &gt; 100K — WFP добавляет overhead</span>
+<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a>
+<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a><span class="c"># pktmon: смотрим latency по компонентам</span>
+<a id="__codelineno-41-14" name="__codelineno-41-14" href="#__codelineno-41-14"></a><span class="n">pktmon</span> <span class="nb">start </span><span class="p">-</span><span class="n">-capture</span> <span class="p">-</span><span class="n">-comp</span> <span class="n">all</span> <span class="p">-</span><span class="n">-type</span> <span class="n">all</span>
+<a id="__codelineno-41-15" name="__codelineno-41-15" href="#__codelineno-41-15"></a><span class="nb">Start-Sleep</span> <span class="n">-Seconds</span> <span class="n">10</span>
+<a id="__codelineno-41-16" name="__codelineno-41-16" href="#__codelineno-41-16"></a><span class="n">pktmon</span> <span class="n">stop</span>
+<a id="__codelineno-41-17" name="__codelineno-41-17" href="#__codelineno-41-17"></a><span class="n">pktmon</span> <span class="n">format</span> <span class="n">PktMon</span><span class="p">.</span><span class="n">etl</span> <span class="n">-o</span> <span class="n">stack_latency</span><span class="p">.</span><span class="n">txt</span>
+<a id="__codelineno-41-18" name="__codelineno-41-18" href="#__codelineno-41-18"></a><span class="c"># Анализируем: на каком компоненте самая большая задержка?</span>
+</code></pre></div>
+<h3 id="4">Шаг 4: Фиксим<a class="headerlink" href="#4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="c"># Включаем RSS с правильной NUMA-привязкой</span>
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="nb">Enable-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a><span class="nb">Set-NetAdapterRss</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span> <span class="p">`</span>
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a>    <span class="n">-NumberOfReceiveQueues</span> <span class="n">8</span> <span class="p">`</span>
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a>    <span class="n">-Profile</span> <span class="s2">&quot;NUMAStatic&quot;</span> <span class="p">`</span>
+<a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a>    <span class="n">-BaseProcessorNumber</span> <span class="n">0</span> <span class="p">`</span>
+<a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a>    <span class="n">-MaxProcessorNumber</span> <span class="n">7</span>
+<a id="__codelineno-42-8" name="__codelineno-42-8" href="#__codelineno-42-8"></a>
+<a id="__codelineno-42-9" name="__codelineno-42-9" href="#__codelineno-42-9"></a><span class="c"># Включаем VMQ</span>
+<a id="__codelineno-42-10" name="__codelineno-42-10" href="#__codelineno-42-10"></a><span class="nb">Enable-NetAdapterVmq</span> <span class="n">-Name</span> <span class="s2">&quot;Ethernet0&quot;</span>
+<a id="__codelineno-42-11" name="__codelineno-42-11" href="#__codelineno-42-11"></a>
+<a id="__codelineno-42-12" name="__codelineno-42-12" href="#__codelineno-42-12"></a><span class="c"># Убираем chaos WFP rule</span>
+<a id="__codelineno-42-13" name="__codelineno-42-13" href="#__codelineno-42-13"></a><span class="nb">Remove-NetFirewallRule</span> <span class="n">-DisplayName</span> <span class="s2">&quot;CHAOS_AUDIT&quot;</span>
+<a id="__codelineno-42-14" name="__codelineno-42-14" href="#__codelineno-42-14"></a><span class="n">auditpol</span> <span class="p">/</span><span class="nb">set </span><span class="p">/</span><span class="n">subcategory</span><span class="p">:</span><span class="s2">&quot;Filtering Platform Connection&quot;</span> <span class="p">/</span><span class="n">success</span><span class="p">:</span><span class="n">disable</span>
+<a id="__codelineno-42-15" name="__codelineno-42-15" href="#__codelineno-42-15"></a>
+<a id="__codelineno-42-16" name="__codelineno-42-16" href="#__codelineno-42-16"></a><span class="c"># Проверяем</span>
+<a id="__codelineno-42-17" name="__codelineno-42-17" href="#__codelineno-42-17"></a><span class="n">iperf3</span> <span class="n">-c</span> <span class="n">172</span><span class="p">.</span><span class="n">16</span><span class="p">.</span><span class="n">2</span><span class="p">.</span><span class="n">20</span> <span class="n">-t</span> <span class="n">30</span> <span class="n">-P</span> <span class="n">4</span>
+<a id="__codelineno-42-18" name="__codelineno-42-18" href="#__codelineno-42-18"></a><span class="c"># Ожидаем: ~8-9 Gbit/s (restored)</span>
+</code></pre></div>
+<hr />
+<h2 id="811-production-windows-server">Часть 8.11: Чеклист для Production Windows Server<a class="headerlink" href="#811-production-windows-server" title="Permanent link">&para;</a></h2>
+<h3 id="_4">Сетевой стек — обязательные проверки<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="c"># === Создаём функцию-аудитор ===</span>
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a><span class="k">function</span> <span class="nb">Invoke-NetworkStackAudit</span> <span class="p">{</span>
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>    <span class="k">param</span><span class="p">(</span><span class="no">[string]</span><span class="nv">$AdapterName</span> <span class="p">=</span> <span class="p">(</span><span class="nb">Get-NetAdapter</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Status</span> <span class="o">-eq</span> <span class="s2">&quot;Up&quot;</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">-First</span> <span class="n">1</span> <span class="n">-ExpandProperty</span> <span class="n">Name</span><span class="p">))</span>
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>
+<a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;=== Network Stack Audit: $AdapterName ===&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-6" name="__codelineno-43-6" href="#__codelineno-43-6"></a>
+<a id="__codelineno-43-7" name="__codelineno-43-7" href="#__codelineno-43-7"></a>    <span class="c"># 1. RSS</span>
+<a id="__codelineno-43-8" name="__codelineno-43-8" href="#__codelineno-43-8"></a>    <span class="nv">$rss</span> <span class="p">=</span> <span class="nb">Get-NetAdapterRss</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span>
+<a id="__codelineno-43-9" name="__codelineno-43-9" href="#__codelineno-43-9"></a>    <span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$rss</span><span class="p">.</span><span class="n">Enabled</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-10" name="__codelineno-43-10" href="#__codelineno-43-10"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[FAIL] RSS DISABLED — all packets on single CPU&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Red</span>
+<a id="__codelineno-43-11" name="__codelineno-43-11" href="#__codelineno-43-11"></a>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<a id="__codelineno-43-12" name="__codelineno-43-12" href="#__codelineno-43-12"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[OK] RSS Enabled, Queues: </span><span class="p">$(</span><span class="nv">$rss</span><span class="p">.</span><span class="n">NumberOfReceiveQueues</span><span class="p">)</span><span class="s2">, Profile: </span><span class="p">$(</span><span class="nv">$rss</span><span class="p">.</span><span class="n">Profile</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Green</span>
+<a id="__codelineno-43-13" name="__codelineno-43-13" href="#__codelineno-43-13"></a>    <span class="p">}</span>
+<a id="__codelineno-43-14" name="__codelineno-43-14" href="#__codelineno-43-14"></a>
+<a id="__codelineno-43-15" name="__codelineno-43-15" href="#__codelineno-43-15"></a>    <span class="c"># 2. NUMA alignment</span>
+<a id="__codelineno-43-16" name="__codelineno-43-16" href="#__codelineno-43-16"></a>    <span class="nv">$numaNode</span> <span class="p">=</span> <span class="p">(</span><span class="nb">Get-NetAdapterHardwareInfo</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span><span class="p">).</span><span class="n">NumaNode</span>
+<a id="__codelineno-43-17" name="__codelineno-43-17" href="#__codelineno-43-17"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] NIC NUMA Node: $numaNode&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Yellow</span>
+<a id="__codelineno-43-18" name="__codelineno-43-18" href="#__codelineno-43-18"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$rss</span><span class="p">.</span><span class="n">BaseProcessorGroup</span> <span class="o">-ne</span> <span class="n">0</span> <span class="o">-and</span> <span class="nv">$numaNode</span> <span class="o">-eq</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-19" name="__codelineno-43-19" href="#__codelineno-43-19"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[WARN] RSS processors may be on different NUMA node than NIC&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Yellow</span>
+<a id="__codelineno-43-20" name="__codelineno-43-20" href="#__codelineno-43-20"></a>    <span class="p">}</span>
+<a id="__codelineno-43-21" name="__codelineno-43-21" href="#__codelineno-43-21"></a>
+<a id="__codelineno-43-22" name="__codelineno-43-22" href="#__codelineno-43-22"></a>    <span class="c"># 3. RSC</span>
+<a id="__codelineno-43-23" name="__codelineno-43-23" href="#__codelineno-43-23"></a>    <span class="nv">$rsc</span> <span class="p">=</span> <span class="nb">Get-NetAdapterRsc</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span>
+<a id="__codelineno-43-24" name="__codelineno-43-24" href="#__codelineno-43-24"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] RSC IPv4: </span><span class="p">$(</span><span class="nv">$rsc</span><span class="p">.</span><span class="n">IPv4Enabled</span><span class="p">)</span><span class="s2">, IPv6: </span><span class="p">$(</span><span class="nv">$rsc</span><span class="p">.</span><span class="n">IPv6Enabled</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-25" name="__codelineno-43-25" href="#__codelineno-43-25"></a>
+<a id="__codelineno-43-26" name="__codelineno-43-26" href="#__codelineno-43-26"></a>    <span class="c"># 4. VMQ (если Hyper-V)</span>
+<a id="__codelineno-43-27" name="__codelineno-43-27" href="#__codelineno-43-27"></a>    <span class="k">try</span> <span class="p">{</span>
+<a id="__codelineno-43-28" name="__codelineno-43-28" href="#__codelineno-43-28"></a>        <span class="nv">$vmq</span> <span class="p">=</span> <span class="nb">Get-NetAdapterVmq</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span> <span class="n">-ErrorAction</span> <span class="n">Stop</span>
+<a id="__codelineno-43-29" name="__codelineno-43-29" href="#__codelineno-43-29"></a>        <span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$vmq</span><span class="p">.</span><span class="n">Enabled</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-30" name="__codelineno-43-30" href="#__codelineno-43-30"></a>            <span class="nb">Write-Host</span> <span class="s2">&quot;[WARN] VMQ DISABLED on Hyper-V host&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Yellow</span>
+<a id="__codelineno-43-31" name="__codelineno-43-31" href="#__codelineno-43-31"></a>        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<a id="__codelineno-43-32" name="__codelineno-43-32" href="#__codelineno-43-32"></a>            <span class="nb">Write-Host</span> <span class="s2">&quot;[OK] VMQ Enabled, Queues: </span><span class="p">$(</span><span class="nv">$vmq</span><span class="p">.</span><span class="n">NumberOfReceiveQueues</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Green</span>
+<a id="__codelineno-43-33" name="__codelineno-43-33" href="#__codelineno-43-33"></a>        <span class="p">}</span>
+<a id="__codelineno-43-34" name="__codelineno-43-34" href="#__codelineno-43-34"></a>    <span class="p">}</span> <span class="k">catch</span> <span class="p">{</span>
+<a id="__codelineno-43-35" name="__codelineno-43-35" href="#__codelineno-43-35"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] VMQ not applicable (not Hyper-V)&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Gray</span>
+<a id="__codelineno-43-36" name="__codelineno-43-36" href="#__codelineno-43-36"></a>    <span class="p">}</span>
+<a id="__codelineno-43-37" name="__codelineno-43-37" href="#__codelineno-43-37"></a>
+<a id="__codelineno-43-38" name="__codelineno-43-38" href="#__codelineno-43-38"></a>    <span class="c"># 5. SR-IOV</span>
+<a id="__codelineno-43-39" name="__codelineno-43-39" href="#__codelineno-43-39"></a>    <span class="k">try</span> <span class="p">{</span>
+<a id="__codelineno-43-40" name="__codelineno-43-40" href="#__codelineno-43-40"></a>        <span class="nv">$sriov</span> <span class="p">=</span> <span class="nb">Get-NetAdapterSriov</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span> <span class="n">-ErrorAction</span> <span class="n">Stop</span>
+<a id="__codelineno-43-41" name="__codelineno-43-41" href="#__codelineno-43-41"></a>        <span class="k">if</span> <span class="p">(</span><span class="nv">$sriov</span><span class="p">.</span><span class="n">Enabled</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-42" name="__codelineno-43-42" href="#__codelineno-43-42"></a>            <span class="nb">Write-Host</span> <span class="s2">&quot;[OK] SR-IOV Enabled, VFs: </span><span class="p">$(</span><span class="nv">$sriov</span><span class="p">.</span><span class="n">NumVFs</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Green</span>
+<a id="__codelineno-43-43" name="__codelineno-43-43" href="#__codelineno-43-43"></a>        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<a id="__codelineno-43-44" name="__codelineno-43-44" href="#__codelineno-43-44"></a>            <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] SR-IOV available but disabled&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Yellow</span>
+<a id="__codelineno-43-45" name="__codelineno-43-45" href="#__codelineno-43-45"></a>        <span class="p">}</span>
+<a id="__codelineno-43-46" name="__codelineno-43-46" href="#__codelineno-43-46"></a>    <span class="p">}</span> <span class="k">catch</span> <span class="p">{</span>
+<a id="__codelineno-43-47" name="__codelineno-43-47" href="#__codelineno-43-47"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] SR-IOV not supported by this NIC&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Gray</span>
+<a id="__codelineno-43-48" name="__codelineno-43-48" href="#__codelineno-43-48"></a>    <span class="p">}</span>
+<a id="__codelineno-43-49" name="__codelineno-43-49" href="#__codelineno-43-49"></a>
+<a id="__codelineno-43-50" name="__codelineno-43-50" href="#__codelineno-43-50"></a>    <span class="c"># 6. Offload settings</span>
+<a id="__codelineno-43-51" name="__codelineno-43-51" href="#__codelineno-43-51"></a>    <span class="nv">$offload</span> <span class="p">=</span> <span class="nb">Get-NetAdapterChecksumOffload</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span>
+<a id="__codelineno-43-52" name="__codelineno-43-52" href="#__codelineno-43-52"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] Checksum Offload - Rx: </span><span class="p">$(</span><span class="nv">$offload</span><span class="p">.</span><span class="n">RxIPv4Checksum</span><span class="p">)</span><span class="s2">, Tx: </span><span class="p">$(</span><span class="nv">$offload</span><span class="p">.</span><span class="n">TxTCPv4Checksum</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-53" name="__codelineno-43-53" href="#__codelineno-43-53"></a>
+<a id="__codelineno-43-54" name="__codelineno-43-54" href="#__codelineno-43-54"></a>    <span class="c"># 7. TCP settings</span>
+<a id="__codelineno-43-55" name="__codelineno-43-55" href="#__codelineno-43-55"></a>    <span class="nv">$tcp</span> <span class="p">=</span> <span class="nb">Get-NetTCPSetting</span> <span class="n">-SettingName</span> <span class="s2">&quot;Internet&quot;</span>
+<a id="__codelineno-43-56" name="__codelineno-43-56" href="#__codelineno-43-56"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] Congestion: </span><span class="p">$(</span><span class="nv">$tcp</span><span class="p">.</span><span class="n">CongestionProvider</span><span class="p">)</span><span class="s2">, AutoTuning: </span><span class="p">$(</span><span class="nv">$tcp</span><span class="p">.</span><span class="n">AutoTuningLevelLocal</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-57" name="__codelineno-43-57" href="#__codelineno-43-57"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$tcp</span><span class="p">.</span><span class="n">AutoTuningLevelLocal</span> <span class="o">-eq</span> <span class="s2">&quot;Disabled&quot;</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-58" name="__codelineno-43-58" href="#__codelineno-43-58"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[FAIL] TCP AutoTuning DISABLED — max window 64KB!&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Red</span>
+<a id="__codelineno-43-59" name="__codelineno-43-59" href="#__codelineno-43-59"></a>    <span class="p">}</span>
+<a id="__codelineno-43-60" name="__codelineno-43-60" href="#__codelineno-43-60"></a>
+<a id="__codelineno-43-61" name="__codelineno-43-61" href="#__codelineno-43-61"></a>    <span class="c"># 8. NDIS filter drivers count</span>
+<a id="__codelineno-43-62" name="__codelineno-43-62" href="#__codelineno-43-62"></a>    <span class="nv">$filters</span> <span class="p">=</span> <span class="nb">Get-NetAdapterBinding</span> <span class="n">-Name</span> <span class="nv">$AdapterName</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Enabled</span>
+<a id="__codelineno-43-63" name="__codelineno-43-63" href="#__codelineno-43-63"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;[INFO] Active NDIS bindings: </span><span class="p">$(</span><span class="nv">$filters</span><span class="p">.</span><span class="n">Count</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-64" name="__codelineno-43-64" href="#__codelineno-43-64"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$filters</span><span class="p">.</span><span class="n">Count</span> <span class="o">-gt</span> <span class="n">10</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-65" name="__codelineno-43-65" href="#__codelineno-43-65"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;[WARN] Too many NDIS filters (</span><span class="p">$(</span><span class="nv">$filters</span><span class="p">.</span><span class="n">Count</span><span class="p">)</span><span class="s2">) — potential latency&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Yellow</span>
+<a id="__codelineno-43-66" name="__codelineno-43-66" href="#__codelineno-43-66"></a>    <span class="p">}</span>
+<a id="__codelineno-43-67" name="__codelineno-43-67" href="#__codelineno-43-67"></a>
+<a id="__codelineno-43-68" name="__codelineno-43-68" href="#__codelineno-43-68"></a>    <span class="c"># 9. DPC distribution</span>
+<a id="__codelineno-43-69" name="__codelineno-43-69" href="#__codelineno-43-69"></a>    <span class="nb">Write-Host</span> <span class="s2">&quot;</span><span class="se">`n</span><span class="s2">--- DPC Distribution (3 sec sample) ---&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<a id="__codelineno-43-70" name="__codelineno-43-70" href="#__codelineno-43-70"></a>    <span class="nv">$dpc</span> <span class="p">=</span> <span class="nb">Get-Counter</span> <span class="s1">&#39;\Processor(*)\% DPC Time&#39;</span> <span class="n">-SampleInterval</span> <span class="n">1</span> <span class="n">-MaxSamples</span> <span class="n">3</span>
+<a id="__codelineno-43-71" name="__codelineno-43-71" href="#__codelineno-43-71"></a>    <span class="nv">$lastSample</span> <span class="p">=</span> <span class="nv">$dpc</span><span class="p">[-</span><span class="n">1</span><span class="p">].</span><span class="n">CounterSamples</span> <span class="p">|</span>
+<a id="__codelineno-43-72" name="__codelineno-43-72" href="#__codelineno-43-72"></a>        <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">InstanceName</span> <span class="o">-ne</span> <span class="s2">&quot;_total&quot;</span> <span class="o">-and</span> <span class="nv">$_</span><span class="p">.</span><span class="n">CookedValue</span> <span class="o">-gt</span> <span class="n">1</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-43-73" name="__codelineno-43-73" href="#__codelineno-43-73"></a>        <span class="nb">Sort-Object</span> <span class="n">CookedValue</span> <span class="n">-Descending</span>
+<a id="__codelineno-43-74" name="__codelineno-43-74" href="#__codelineno-43-74"></a>    <span class="k">foreach</span> <span class="p">(</span><span class="nv">$cpu</span> <span class="k">in</span> <span class="nv">$lastSample</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-43-75" name="__codelineno-43-75" href="#__codelineno-43-75"></a>        <span class="nv">$bar</span> <span class="p">=</span> <span class="s2">&quot;#&quot;</span> <span class="p">*</span> <span class="no">[math]</span><span class="p">::</span><span class="n">Min</span><span class="p">(</span><span class="no">[int]</span><span class="nv">$cpu</span><span class="p">.</span><span class="n">CookedValue</span><span class="p">,</span> <span class="n">50</span><span class="p">)</span>
+<a id="__codelineno-43-76" name="__codelineno-43-76" href="#__codelineno-43-76"></a>        <span class="nb">Write-Host</span> <span class="s2">&quot;  CPU </span><span class="p">$(</span><span class="nv">$cpu</span><span class="p">.</span><span class="n">InstanceName</span><span class="p">)</span><span class="s2">: </span><span class="p">$(</span><span class="no">[math]</span><span class="p">::</span><span class="n">Round</span><span class="p">(</span><span class="nv">$cpu</span><span class="p">.</span><span class="n">CookedValue</span><span class="p">,</span><span class="n">1</span><span class="p">))</span><span class="s2">% $bar&quot;</span>
+<a id="__codelineno-43-77" name="__codelineno-43-77" href="#__codelineno-43-77"></a>    <span class="p">}</span>
+<a id="__codelineno-43-78" name="__codelineno-43-78" href="#__codelineno-43-78"></a><span class="p">}</span>
+<a id="__codelineno-43-79" name="__codelineno-43-79" href="#__codelineno-43-79"></a>
+<a id="__codelineno-43-80" name="__codelineno-43-80" href="#__codelineno-43-80"></a><span class="c"># Запуск:</span>
+<a id="__codelineno-43-81" name="__codelineno-43-81" href="#__codelineno-43-81"></a><span class="nb">Invoke-NetworkStackAudit</span> <span class="n">-AdapterName</span> <span class="s2">&quot;Ethernet0&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="_5">Практические задания<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<h3 id="1-rss-benchmark">Задание 1: RSS Benchmark<a class="headerlink" href="#1-rss-benchmark" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Установите iperf3 на два Windows Server (или VM)</li>
+<li>Измерьте throughput с RSS <strong>отключённым</strong> (<code>Disable-NetAdapterRss</code>)</li>
+<li>Включите RSS с 1, 2, 4, 8 очередями</li>
+<li>Постройте график: Queues → Throughput</li>
+<li>Найдите точку diminishing returns (обычно = количество физических ядер на NUMA node)</li>
+</ol>
+<h3 id="2-filter-driver">Задание 2: Найди filter driver<a class="headerlink" href="#2-filter-driver" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Установите WireGuard VPN на Windows Server</li>
+<li>Запустите <code>pktmon list</code> — найдите новый NDIS filter</li>
+<li>Измерьте latency (ping) и throughput до и после установки</li>
+<li>Деактивируйте WireGuard binding через <code>Disable-NetAdapterBinding</code></li>
+<li>Сравните производительность — какой overhead добавил filter?</li>
+</ol>
+<h3 id="3-wfp-forensics">Задание 3: WFP Forensics<a class="headerlink" href="#3-wfp-forensics" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Создайте 5 Windows Firewall rules (блокирующих и разрешающих)</li>
+<li>Добавьте правило, блокирующее порт 5432 (PostgreSQL)</li>
+<li>Из приложения — попытка подключения к БД</li>
+<li>Используя <strong>только</strong> <code>netsh wfp show filters</code> и <code>auditpol</code> + Security Event Log — найдите, какое правило блокирует</li>
+<li>Найдите Filter ID, Provider Key, и покажите полную цепочку вызовов</li>
+</ol>
+<h3 id="4-dpc-storm">Задание 4: DPC Storm<a class="headerlink" href="#4-dpc-storm" title="Permanent link">&para;</a></h3>
+<ol>
+<li>На загруженном сервере запустите <code>xperf -on DPC+ISR+PROFILE -stackwalk DPC</code></li>
+<li>Сгенерируйте 10 Gbit/s нагрузку через iperf3</li>
+<li>Откройте ETL в WPA</li>
+<li>Определите: какой драйвер генерирует больше всего DPC?</li>
+<li>Какова средняя и максимальная длительность DPC? (&gt; 100μs — проблема)</li>
+</ol>
+<h3 id="5-sr-iov-live-migration">Задание 5: SR-IOV Live Migration<a class="headerlink" href="#5-sr-iov-live-migration" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Настройте SR-IOV для VM на Hyper-V Cluster (2 узла)</li>
+<li>Внутри VM: запустите непрерывный iperf3 + ping</li>
+<li>Выполните Live Migration</li>
+<li>Измерьте: сколько пакетов потеряно? Какой максимальный gap?</li>
+<li>Проверьте: переключилась ли VM обратно на VF после миграции?</li>
+</ol>
+<hr />
+<h2 id="_6">Связь с другими модулями<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<p><strong>Связь с основной книгой:</strong></p>
+<ul>
+<li>RSS в Windows ≈ RSS/RPS в Linux (Модуль 1)</li>
+<li>WFP ≈ iptables/nftables + netfilter (Модуль 2, IP)</li>
+<li>TCP settings ≈ sysctl tuning (Модуль 5, TC/Tuning)</li>
+<li>DPC/ISR ≈ SoftIRQ/NAPI (Модуль 1)</li>
+<li>pktmon ≈ tcpdump + eBPF tracing (Модуль 5)</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>

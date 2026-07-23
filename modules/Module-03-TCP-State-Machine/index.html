@@ -1,0 +1,3931 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="От физического уровня и IP до TCP, CUBIC, BBR, QUIC и Windows Network Internals.">
+      
+      
+      
+      
+        <link rel="prev" href="../Module-02-IP-Protocol/">
+      
+      
+        <link rel="next" href="../Module-04-Congestion-Control/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Модуль 3. TCP State Machine - Полное руководство по TCP</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#3-tcp-state-machine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Полное руководство по TCP" class="md-header__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Полное руководство по TCP
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Модуль 3. TCP State Machine
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-tabs__link">
+          
+  
+  
+  Основы сетевого стека
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-04-Congestion-Control/" class="md-tabs__link">
+          
+  
+  
+  Управление трафиком
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-06-Application-Architecture/" class="md-tabs__link">
+          
+  
+  
+  Архитектура приложений
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-08-Windows-Network-Stack/" class="md-tabs__link">
+          
+  
+  
+  Windows Networking
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Module-10-EVE-NG-Lab/" class="md-tabs__link">
+          
+  
+  
+  Лаборатории
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Полное руководство по TCP" class="md-nav__button md-logo" aria-label="Полное руководство по TCP" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Полное руководство по TCP
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Основы сетевого стека
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Основы сетевого стека
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-01-Physical-Layer-and-Kernel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 1. Физический уровень и ядро
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-02-IP-Protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 2. Internet Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 3. TCP State Machine
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 3. TCP State Machine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#31-tcp-state-machine-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.1: TCP State Machine — 11 состояний
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.1: TCP State Machine — 11 состояний">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диаграмма состояний
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#32-three-way-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.2: Three-Way Handshake — Рождение соединения
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.2: Three-Way Handshake — Рождение соединения">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что происходит на самом деле
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#isn-initial-sequence-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ISN (Initial Sequence Number): Почему случайный
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syn-queue-accept-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Серверная сторона: SYN Queue и Accept Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#33-syn-flood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.3: SYN Flood и защита
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.3: SYN Flood и защита">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Атака
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syn-cookies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SYN Cookies: Защита без состояния
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-fast-open-tfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP Fast Open (TFO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#34-sliding-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.4: Sliding Window и приём данных
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.4: Sliding Window и приём данных">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#341-send-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.1 Окно отправки (send-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#342-window-scaling-send-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.2 Window Scaling (send-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#343-delayed-ack-receive-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.3 Delayed ACK (receive-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#344-tcpslidingwindow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.4 Практический проект: TcpSlidingWindow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#345-segment-acceptability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.5 Segment Acceptability — можно ли вообще принять сегмент
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#346-rcvnxt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.6 RCV.NXT — что уже точно доставлено приложению
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#347-out-of-order-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.7 Out-of-Order Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#348-overlapping-duplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.8 Overlapping и Duplicate сегменты
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#349-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.9 Memory Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3410-tcpoutoforderreassembler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.10 Практический проект: TcpOutOfOrderReassembler
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#35-retransmission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.5: Retransmission — Когда пакеты теряются
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.5: Retransmission — Когда пакеты теряются">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rto-retransmission-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RTO (Retransmission Timeout)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fast-retransmit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fast Retransmit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sack-selective-acknowledgment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SACK (Selective Acknowledgment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rack-recent-acknowledgment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RACK (Recent ACKnowledgment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#36-four-way-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.6: Закрытие соединения — Four-Way Handshake
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.6: Закрытие соединения — Four-Way Handshake">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Нормальное закрытие
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLOSE_WAIT: Ваш код сломан
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_wait-2msl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TIME_WAIT: Зачем ждать 2MSL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_wait-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TIME_WAIT Exhaustion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rst" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RST: Аварийное закрытие
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#37-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.7: Таймеры TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.7: Таймеры TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-retransmission-timer-rto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Retransmission Timer (RTO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-persist-timer-zero-window-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Persist Timer (Zero Window Probe)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-keepalive-timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Keepalive Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-time_wait-timer-2msl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. TIME_WAIT Timer (2MSL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-fin_wait_2-timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. FIN_WAIT_2 Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#371-rfc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7.1 RFC — сводка по модулю
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#372-tcpreceivepipeline-delayed-ack-rto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7.2 Практический проект: TcpReceivePipeline — Delayed ACK и RTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#38-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.8: Диагностика состояний TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.8: Диагностика состояний TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ss: Главный инструмент
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nstat: Счётчики ядра
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#procnettcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /proc/net/tcp: Прямой доступ к таблице
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ebpf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eBPF трассировка
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#381-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8.1 Диагностика в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#39-production-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.9: Типичные production-проблемы
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.9: Типичные production-проблемы">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-time_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 1: Тысячи TIME_WAIT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-syn_recv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 2: SYN_RECV растёт
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 3: CLOSE_WAIT накапливаются
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 4: Высокий % ретрансмитов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-sack-panic-cve-2019-11477-cve-2019-11478" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 5: SACK Panic (CVE-2019-11477 / CVE-2019-11478)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-out-of-order-queue-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 6: Out-of-Order queue exhaustion под атакой
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-duplicate-ack-storm-ecmpmultipath-reordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 7: Duplicate ACK storm от ECMP/multipath reordering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-receive-window-zero-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 8: Receive Window Zero из-за медленного приложения
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-tcp-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: Наблюдение за TCP state machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-syn-flood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: SYN Flood и защита
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-time_wait-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: TIME_WAIT exhaustion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: CLOSE_WAIT детектив
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-rto-fast-retransmit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: RTO и Fast Retransmit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tc-qdisc-add-dev-ens34-root-netem-loss-5-tcpretrans-iperf3-c-1921685010-t-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        # На роутере tc qdisc add dev ens34 root netem loss 5% # На клиенте tcpretrans &amp; iperf3 -c 192.168.50.10 -t 30
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#310-tls-handshake-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.10: TLS Handshake — Шифрование поверх TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.10: TLS Handshake — Шифрование поверх TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-12-2-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.2 — 2 дополнительных RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tls-13-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.3 — 1 дополнительный RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tls-13-0-rtt-early-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.3 0-RTT (Early Data)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-fast-open-tls-13-0-rtt-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP Fast Open + TLS 1.3 = 0-RTT end-to-end
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ktls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kTLS — шифрование в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Влияние на диагностику
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сравнение RTT до первых данных
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Управление трафиком
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Управление трафиком
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-04-Congestion-Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 4. Bufferbloat и Congestion Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-05-Traffic-Control-Tuning-Diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 5. Traffic Control, тюнинг и диагностика
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Lab-Setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лабораторный стенд
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура приложений
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура приложений
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-06-Application-Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 6. Высокопроизводительные сетевые приложения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-07-QUIC-HTTP3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 7. QUIC и HTTP/3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Networking
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Windows Networking
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-08-Windows-Network-Stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 8. Windows Server Network Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-09-Windows-Client-Networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 9. Windows Client Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Лаборатории
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Лаборатории
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Module-10-EVE-NG-Lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Модуль 10. EVE-NG и Chaos Engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#31-tcp-state-machine-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.1: TCP State Machine — 11 состояний
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.1: TCP State Machine — 11 состояний">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диаграмма состояний
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#32-three-way-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.2: Three-Way Handshake — Рождение соединения
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.2: Three-Way Handshake — Рождение соединения">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что происходит на самом деле
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#isn-initial-sequence-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ISN (Initial Sequence Number): Почему случайный
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syn-queue-accept-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Серверная сторона: SYN Queue и Accept Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Диагностика
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#33-syn-flood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.3: SYN Flood и защита
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.3: SYN Flood и защита">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Атака
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syn-cookies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SYN Cookies: Защита без состояния
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-fast-open-tfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP Fast Open (TFO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#34-sliding-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.4: Sliding Window и приём данных
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.4: Sliding Window и приём данных">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#341-send-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.1 Окно отправки (send-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#342-window-scaling-send-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.2 Window Scaling (send-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#343-delayed-ack-receive-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.3 Delayed ACK (receive-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#344-tcpslidingwindow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.4 Практический проект: TcpSlidingWindow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#345-segment-acceptability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.5 Segment Acceptability — можно ли вообще принять сегмент
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#346-rcvnxt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.6 RCV.NXT — что уже точно доставлено приложению
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#347-out-of-order-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.7 Out-of-Order Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#348-overlapping-duplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.8 Overlapping и Duplicate сегменты
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#349-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.9 Memory Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3410-tcpoutoforderreassembler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4.10 Практический проект: TcpOutOfOrderReassembler
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#35-retransmission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.5: Retransmission — Когда пакеты теряются
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.5: Retransmission — Когда пакеты теряются">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rto-retransmission-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RTO (Retransmission Timeout)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fast-retransmit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fast Retransmit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sack-selective-acknowledgment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SACK (Selective Acknowledgment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rack-recent-acknowledgment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RACK (Recent ACKnowledgment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#36-four-way-handshake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.6: Закрытие соединения — Four-Way Handshake
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.6: Закрытие соединения — Four-Way Handshake">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Нормальное закрытие
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLOSE_WAIT: Ваш код сломан
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_wait-2msl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TIME_WAIT: Зачем ждать 2MSL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_wait-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TIME_WAIT Exhaustion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rst" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RST: Аварийное закрытие
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#37-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.7: Таймеры TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.7: Таймеры TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-retransmission-timer-rto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Retransmission Timer (RTO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-persist-timer-zero-window-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Persist Timer (Zero Window Probe)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-keepalive-timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Keepalive Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-time_wait-timer-2msl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. TIME_WAIT Timer (2MSL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-fin_wait_2-timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. FIN_WAIT_2 Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#371-rfc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7.1 RFC — сводка по модулю
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#372-tcpreceivepipeline-delayed-ack-rto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7.2 Практический проект: TcpReceivePipeline — Delayed ACK и RTO
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#38-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.8: Диагностика состояний TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.8: Диагностика состояний TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ss: Главный инструмент
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nstat: Счётчики ядра
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#procnettcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /proc/net/tcp: Прямой доступ к таблице
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ebpf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eBPF трассировка
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#381-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8.1 Диагностика в Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#39-production-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.9: Типичные production-проблемы
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.9: Типичные production-проблемы">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-time_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 1: Тысячи TIME_WAIT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-syn_recv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 2: SYN_RECV растёт
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 3: CLOSE_WAIT накапливаются
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 4: Высокий % ретрансмитов
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-sack-panic-cve-2019-11477-cve-2019-11478" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 5: SACK Panic (CVE-2019-11477 / CVE-2019-11478)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-out-of-order-queue-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 6: Out-of-Order queue exhaustion под атакой
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-duplicate-ack-storm-ecmpmultipath-reordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 7: Duplicate ACK storm от ECMP/multipath reordering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-receive-window-zero-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Проблема 8: Receive Window Zero из-за медленного приложения
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Практическое задание
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Практическое задание">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-tcp-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 1: Наблюдение за TCP state machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-syn-flood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 2: SYN Flood и защита
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-time_wait-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 3: TIME_WAIT exhaustion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-close_wait" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 4: CLOSE_WAIT детектив
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-rto-fast-retransmit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Задача 5: RTO и Fast Retransmit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tc-qdisc-add-dev-ens34-root-netem-loss-5-tcpretrans-iperf3-c-1921685010-t-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        # На роутере tc qdisc add dev ens34 root netem loss 5% # На клиенте tcpretrans &amp; iperf3 -c 192.168.50.10 -t 30
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#310-tls-handshake-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Часть 3.10: TLS Handshake — Шифрование поверх TCP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Часть 3.10: TLS Handshake — Шифрование поверх TCP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-12-2-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.2 — 2 дополнительных RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tls-13-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.3 — 1 дополнительный RTT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tls-13-0-rtt-early-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS 1.3 0-RTT (Early Data)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tcp-fast-open-tls-13-0-rtt-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TCP Fast Open + TLS 1.3 = 0-RTT end-to-end
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ktls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kTLS — шифрование в ядре
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Влияние на диагностику
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сравнение RTT до первых данных
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="3-tcp-state-machine">Модуль 3: TCP State Machine и жизненный цикл соединения<a class="headerlink" href="#3-tcp-state-machine" title="Permanent link">&para;</a></h1>
+<p><em>«TCP — это не просто протокол. Это конечный автомат с 11 состояниями, каждое из которых может убить ваш сервер».</em></p>
+<p>В предыдущем модуле мы разобрали сетевой уровень: структуру IPv4 и IPv6, маршрутизацию, фрагментацию, PMTUD и путь пакета через ядро. Теперь поднимемся на транспортный уровень и посмотрим, как TCP превращает отдельные IP-пакеты в надёжный упорядоченный поток байтов.</p>
+<p>Сначала разберём жизненный цикл соединения: установление, передачу данных, повторную отправку, закрытие и таймеры. Затем свяжем машину состояний TCP с практической обработкой входящего потока: sliding window, <code>RCV.NXT</code>, out-of-order сегментами, reassembly, SACK и ACK generation.</p>
+<hr />
+<h2 id="31-tcp-state-machine-11">Часть 3.1: TCP State Machine — 11 состояний<a class="headerlink" href="#31-tcp-state-machine-11" title="Permanent link">&para;</a></h2>
+<h3 id="_1">Диаграмма состояний<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                              ┌───────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                    Passive   │  CLOSED   │   Active
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                    Open      └─────┬─────┘   Open
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                   ┌────────────────┼────────────────┐
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                   │                │                │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                   ▼                │                ▼
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            ┌──────────┐           │         ┌──────────┐
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            │  LISTEN  │           │         │ SYN_SENT │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            └────┬─────┘           │         └────┬─────┘
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>     Recv SYN    │                 │              │  Recv SYN+ACK
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>     Send SYN+ACK│                │              │  Send ACK
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                 ▼                 │              ▼
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>          ┌───────────┐           │       ┌─────────────┐
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>          │ SYN_RCVD  │───────────┘       │ ESTABLISHED │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>          └─────┬─────┘  Recv ACK         └──────┬──────┘
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                │                                │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                └────────────────┬───────────────┘
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                                 │
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                    Close        │        Recv FIN
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                    Send FIN     │        Send ACK
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                 ┌───────────────┼────────────────┐
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                 ▼                                ▼
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>          ┌───────────┐                    ┌────────────┐
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>          │ FIN_WAIT_1│                    │ CLOSE_WAIT │
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>          └─────┬─────┘                    └─────┬──────┘
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    Recv ACK    │    Recv FIN+ACK          Close │
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                ▼    Send ACK                    ▼ Send FIN
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>          ┌───────────┐                    ┌────────────┐
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>          │ FIN_WAIT_2│                    │  LAST_ACK  │
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>          └─────┬─────┘                    └─────┬──────┘
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    Recv FIN    │                          Recv ACK│
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    Send ACK   │                                  │
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>                ▼                                  ▼
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>          ┌───────────┐                    ┌───────────┐
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>          │ TIME_WAIT │───── 2MSL ────────→│  CLOSED   │
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>          └───────────┘    timeout         └───────────┘
+</code></pre></div>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; CLOSED
+    CLOSED --&gt; LISTEN : Passive Open
+    CLOSED --&gt; SYN_SENT : Active Open
+
+    LISTEN --&gt; SYN_RCVD : Recv SYN / Send SYN+ACK
+    SYN_SENT --&gt; ESTABLISHED : Recv SYN+ACK / Send ACK
+    SYN_RCVD --&gt; ESTABLISHED : Recv ACK
+
+    ESTABLISHED --&gt; FIN_WAIT_1 : Close / Send FIN
+    ESTABLISHED --&gt; CLOSE_WAIT : Recv FIN / Send ACK
+
+    FIN_WAIT_1 --&gt; FIN_WAIT_2 : Recv ACK
+    FIN_WAIT_1 --&gt; CLOSING : Recv FIN+ACK / Send ACK
+    CLOSING --&gt; TIME_WAIT : Recv ACK
+
+    FIN_WAIT_2 --&gt; TIME_WAIT : Recv FIN / Send ACK
+    CLOSE_WAIT --&gt; LAST_ACK : Close / Send FIN
+    LAST_ACK --&gt; CLOSED : Recv ACK
+
+    TIME_WAIT --&gt; CLOSED : 2MSL timeout</code></pre>
+<p>Каждое состояние — это конкретное поле в структуре <code>struct sock</code> в ядре:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// include/net/inet_connection_sock.h</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// Состояние хранится в sk-&gt;sk_state</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">enum</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">TCP_ESTABLISHED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">TCP_SYN_SENT</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">TCP_SYN_RECV</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">TCP_FIN_WAIT1</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="n">TCP_FIN_WAIT2</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="n">TCP_TIME_WAIT</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="n">TCP_CLOSE</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="n">TCP_CLOSE_WAIT</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">TCP_LAST_ACK</span><span class="p">,</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="n">TCP_LISTEN</span><span class="p">,</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">TCP_CLOSING</span><span class="p">,</span><span class="w">    </span><span class="c1">// Обе стороны закрыли одновременно</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="n">TCP_NEW_SYN_RECV</span><span class="p">,</span><span class="w"> </span><span class="c1">// Оптимизация для SYN cookies</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="p">};</span>
+</code></pre></div>
+<hr />
+<h2 id="32-three-way-handshake">Часть 3.2: Three-Way Handshake — Рождение соединения<a class="headerlink" href="#32-three-way-handshake" title="Permanent link">&para;</a></h2>
+<h3 id="_2">Что происходит на самом деле<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Клиент                                    Сервер
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  │                                          │
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  │  SYN (seq=ISN_c)                         │
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  │─────────────────────────────────────────→│  SYN_SENT → SYN_RCVD
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  │                                          │
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  │  SYN+ACK (seq=ISN_s, ack=ISN_c+1)       │
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  │←─────────────────────────────────────────│
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  │                                          │
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  │  ACK (ack=ISN_s+1)                       │
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  │─────────────────────────────────────────→│  ESTABLISHED
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  │          ESTABLISHED                     │
+</code></pre></div>
+<h3 id="isn-initial-sequence-number">ISN (Initial Sequence Number): Почему случайный<a class="headerlink" href="#isn-initial-sequence-number" title="Permanent link">&para;</a></h3>
+<p>ISN не начинается с нуля. Ядро генерирует его через <code>secure_tcp_seq()</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// net/core/secure_seq.c</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">u32</span><span class="w"> </span><span class="nf">secure_tcp_seq</span><span class="p">(</span><span class="n">__be32</span><span class="w"> </span><span class="n">saddr</span><span class="p">,</span><span class="w"> </span><span class="n">__be32</span><span class="w"> </span><span class="n">daddr</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">                   </span><span class="n">__be16</span><span class="w"> </span><span class="n">sport</span><span class="p">,</span><span class="w"> </span><span class="n">__be16</span><span class="w"> </span><span class="n">dport</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">{</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">hash</span><span class="p">;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="c1">// SipHash от 4-tuple + секретный ключ + таймер</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="n">net_secret_init</span><span class="p">();</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="n">hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">siphash_3u32</span><span class="p">((</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)</span><span class="n">saddr</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)</span><span class="n">daddr</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">                        </span><span class="p">(</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)(</span><span class="n">sport</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">((</span><span class="n">__force</span><span class="w"> </span><span class="n">u32</span><span class="p">)</span><span class="n">dport</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)),</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">                        </span><span class="o">&amp;</span><span class="n">net_secret</span><span class="p">);</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">hash</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">ktime_get_real_ns</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">6</span><span class="p">);</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Зачем случайный ISN:</strong>
+1. <strong>Защита от спуфинга</strong>: атакующий не может угадать sequence number и внедрить пакет в чужое соединение
+2. <strong>Защита от старых пакетов</strong>: если предыдущее соединение с теми же (src, dst, sport, dport) не полностью завершилось, старые пакеты с предсказуемым ISN могли бы попасть в новое соединение</p>
+<h3 id="syn-queue-accept-queue">Серверная сторона: SYN Queue и Accept Queue<a class="headerlink" href="#syn-queue-accept-queue" title="Permanent link">&para;</a></h3>
+<p>Когда сервер получает SYN, он создаёт полу-открытое соединение. В ядре это два раздельных буфера:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>                   ┌─────────────────┐
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    SYN ──────────→│   SYN Queue     │  (полу-открытые, ждём ACK)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                   │  (request_sock) │
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                   └────────┬────────┘
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                            │  Recv ACK
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                            ▼
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                   ┌─────────────────┐
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                   │  Accept Queue   │  (полностью открытые, ждём accept())
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                   │   (struct sock) │
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                   └────────┬────────┘
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                            │  accept() syscall
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>                            ▼
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>                     Приложение
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Размеры очередей контролируются:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// SYN Queue:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">net</span><span class="p">.</span><span class="n">ipv4</span><span class="p">.</span><span class="n">tcp_max_syn_backlog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4096</span><span class="w">   </span><span class="c1">// Макс. полу-открытых</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// Accept Queue:</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// Задаётся аргументом listen(fd, backlog)</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1">// Ограничен сверху:</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">net</span><span class="p">.</span><span class="n">core</span><span class="p">.</span><span class="n">somaxconn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4096</span>
+</code></pre></div>
+<h3 id="_3">Диагностика<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Текущее состояние очередей</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>ss<span class="w"> </span>-ltn
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># Recv-Q = текущий размер accept queue</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Send-Q = максимальный размер accept queue (backlog)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Переполнения</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>nstat<span class="w"> </span>-az<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;listen&#39;</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># TcpExtListenOverflows  — accept queue переполнена</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1"># TcpExtListenDrops      — дропы из-за переполнения</span>
+</code></pre></div>
+<p>Если <code>ListenOverflows</code> растёт — приложение не успевает вызывать <code>accept()</code>. Это не проблема сети, это проблема <strong>приложения</strong>.</p>
+<hr />
+<h2 id="33-syn-flood">Часть 3.3: SYN Flood и защита<a class="headerlink" href="#33-syn-flood" title="Permanent link">&para;</a></h2>
+<h3 id="_4">Атака<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>Атакующий отправляет тысячи SYN-пакетов с поддельными IP-адресами. Сервер создаёт <code>request_sock</code> для каждого, отвечает SYN+ACK. ACK никогда не придёт (IP фальшивый). SYN Queue переполняется → легитимные клиенты не могут подключиться.</p>
+<h3 id="syn-cookies">SYN Cookies: Защита без состояния<a class="headerlink" href="#syn-cookies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>net.ipv4.tcp_syncookies<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<p>Когда SYN Queue переполнена, ядро <strong>не создаёт</strong> <code>request_sock</code>. Вместо этого оно кодирует параметры соединения прямо в ISN ответного SYN+ACK:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// net/ipv4/syncookies.c (упрощённо)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">static</span><span class="w"> </span><span class="n">__u32</span><span class="w"> </span><span class="nf">cookie_hash</span><span class="p">(</span><span class="n">__be32</span><span class="w"> </span><span class="n">saddr</span><span class="p">,</span><span class="w"> </span><span class="n">__be32</span><span class="w"> </span><span class="n">daddr</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">                          </span><span class="n">__be16</span><span class="w"> </span><span class="n">sport</span><span class="p">,</span><span class="w"> </span><span class="n">__be16</span><span class="w"> </span><span class="n">dport</span><span class="p">,</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">                          </span><span class="n">u32</span><span class="w"> </span><span class="n">count</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">{</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="c1">// ISN = hash(src, dst, sport, dport, time) + MSS_index</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="c1">// MSS кодируется в младших битах</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="c1">// Время кодируется через 64-секундные интервалы (count)</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">siphash_4u32</span><span class="p">(</span><span class="n">saddr</span><span class="p">,</span><span class="w"> </span><span class="n">daddr</span><span class="p">,</span><span class="w"> </span><span class="n">sport</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">dport</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">                        </span><span class="n">count</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">syncookie_secret</span><span class="p">[</span><span class="n">c</span><span class="p">]);</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="p">}</span>
+</code></pre></div>
+<p>Когда клиент отвечает ACK, ядро <strong>восстанавливает</strong> параметры соединения из sequence number в ACK. Если хеш совпадает — соединение легитимное.</p>
+<p><strong>Ограничения SYN Cookies:</strong>
+- Не поддерживают TCP Options (Window Scaling, SACK, Timestamps) в классическом варианте. Ядро Linux обходит это, кодируя основные опции в cookie.
+- Не защищают от volumetric DDoS (когда канал забит трафиком).</p>
+<h3 id="tcp-fast-open-tfo">TCP Fast Open (TFO)<a class="headerlink" href="#tcp-fast-open-tfo" title="Permanent link">&para;</a></h3>
+<p>Позволяет отправить данные <strong>прямо в SYN</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Первое соединение:
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  Client → SYN + TFO Cookie Request
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  Server → SYN+ACK + TFO Cookie
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  Client → ACK
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>Последующие:
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  Client → SYN + TFO Cookie + HTTP GET /    ← Данные в SYN!
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Server → SYN+ACK + HTTP Response           ← Ответ сразу!
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  Client → ACK
+</code></pre></div>
+<p>Экономит 1 RTT. Включение:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Сервер</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>net.ipv4.tcp_fastopen<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">3</span><span class="w">  </span><span class="c1"># 1=клиент, 2=сервер, 3=оба</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># В приложении</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>setsockopt<span class="o">(</span>fd,<span class="w"> </span>IPPROTO_TCP,<span class="w"> </span>TCP_FASTOPEN,<span class="w"> </span><span class="p">&amp;</span>qlen,<span class="w"> </span>sizeof<span class="o">(</span>qlen<span class="o">))</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Проблема:</strong> многие middleboxes дропают SYN с данными. Adoption низкий.</p>
+<hr />
+<h2 id="34-sliding-window">Часть 3.4: Sliding Window и приём данных<a class="headerlink" href="#34-sliding-window" title="Permanent link">&para;</a></h2>
+<p>TCP управляет потоком данных с двух разных позиций одновременно: отправитель
+решает, сколько байт можно послать прямо сейчас (send-side), а получатель
+решает, какие из пришедших байт можно отдать приложению прямо сейчас, а какие
+нужно попридержать (receive-side). Ниже разберём обе стороны по очереди —
+и на стыке между ними окажется самая сложная и самая интересная часть главы:
+что делать с сегментами, которые пришли не в том порядке, в котором были
+отправлены.</p>
+<h3 id="341-send-side">3.4.1 Окно отправки (send-side)<a class="headerlink" href="#341-send-side" title="Permanent link">&para;</a></h3>
+<p>TCP использует <strong>скользящее окно</strong> для управления потоком данных:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>       snd_una          snd_nxt            snd_una + snd_wnd
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>         │                │                      │
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>         ▼                ▼                      ▼
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>┌────────┬────────────────┬──────────────────────┬──────────┐
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>│  ACKed │   Sent, not    │  Can send (window)   │ Cannot   │
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>│        │   ACKed yet    │                      │ send yet │
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>└────────┴────────────────┴──────────────────────┴──────────┘
+</code></pre></div>
+<p>В ядре это поля <code>struct tcp_sock</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">tcp_sock</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">snd_una</span><span class="p">;</span><span class="w">     </span><span class="c1">// Первый неподтверждённый байт</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">snd_nxt</span><span class="p">;</span><span class="w">     </span><span class="c1">// Следующий байт для отправки</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">snd_wnd</span><span class="p">;</span><span class="w">     </span><span class="c1">// Размер окна получателя (rwnd)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">snd_cwnd</span><span class="p">;</span><span class="w">    </span><span class="c1">// Congestion window (в пакетах)</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">rcv_nxt</span><span class="p">;</span><span class="w">     </span><span class="c1">// Следующий ожидаемый байт от отправителя</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">rcv_wnd</span><span class="p">;</span><span class="w">     </span><span class="c1">// Наше окно приёма (сколько готовы принять)</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">    </span><span class="c1">// Реальное окно отправки = min(snd_wnd, snd_cwnd * mss)</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="p">};</span>
+</code></pre></div>
+<p><strong>Эффективное окно</strong> = <code>min(rwnd, cwnd)</code>. TCP отправляет не быстрее, чем
+позволяет <strong>самое маленькое</strong> из двух ограничений: получатель (rwnd) или
+сеть (cwnd, подробнее — Модуль 4).</p>
+<h3 id="342-window-scaling-send-side">3.4.2 Window Scaling (send-side)<a class="headerlink" href="#342-window-scaling-send-side" title="Permanent link">&para;</a></h3>
+<p>Классическое поле Window в TCP-заголовке — 16 бит (максимум 65535 байт).
+Для 10 Gbps канала с RTT=100мс нужно окно ~125 MB. Решение — <strong>Window Scale
+option</strong> (RFC 7323):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Реальное окно = Window × 2^scale_factor
+</code></pre></div>
+<p>Scale factor согласовывается в SYN/SYN+ACK (0..14). При scale=7:
+<code>65535 × 128 = 8 MB</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Включено по умолчанию</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>net.ipv4.tcp_window_scaling<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<h3 id="343-delayed-ack-receive-side">3.4.3 Delayed ACK (receive-side)<a class="headerlink" href="#343-delayed-ack-receive-side" title="Permanent link">&para;</a></h3>
+<p>Здесь мы переключаемся на сторону получателя. Получатель не обязан отвечать
+ACK на каждый пакет. Он может подождать:
+- До 200 мс (таймер)
+- До получения второго пакета (ACK every other segment)</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1">// net/ipv4/tcp_input.c</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1">// Delayed ACK таймер</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">inet_csk</span><span class="p">(</span><span class="n">sk</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">icsk_ack</span><span class="p">.</span><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TCP_DELACK_MIN</span><span class="p">;</span><span class="w">  </span><span class="c1">// ~40ms по умолчанию</span>
+</code></pre></div>
+<p><strong>Проблема с Nagle:</strong> если приложение отправляет маленькие порции, Nagle
+буферизирует их, ожидая ACK. Delayed ACK задерживает ACK. Результат: 200мс
+задержки. Решение: <code>TCP_NODELAY</code> (подробнее — Модуль 6, 6.4).</p>
+<hr />
+<h3 id="344-tcpslidingwindow">3.4.4 Практический проект: TcpSlidingWindow<a class="headerlink" href="#344-tcpslidingwindow" title="Permanent link">&para;</a></h3>
+<p>Прежде чем разбираться с receive-side сложностями (3.4.5 и далее), стоит
+увидеть send-side механику 3.4.1–3.4.2 в виде работающего кода — до
+reassembly, до времени, до потерь. <code>TcpSlidingWindow</code> — самостоятельный
+проект (<code>TcpSlidingWindow.csproj</code>), моделирующий только это:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>TcpSlidingWindow/
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>├── TcpSlidingWindow.csproj
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>├── Core/
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>│   ├── SequenceMath.cs           — сравнение sequence number по модулю 2³²
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>│   ├── TcpFlags.cs, TcpSegment.cs — биты заголовка и zero-alloc `readonly ref struct`
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>│   │                                 вид на сегмент (живёт только на стеке одного parse)
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>│   └── SlidingWindowTracker.cs   — SND/RCV переменные обеих сторон
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>├── Infrastructure/
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>│   ├── TcpHeaderParser.cs        — парсинг wire-байт через BinaryPrimitives
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>│   └── SyntheticSegmentWriter.cs — генерация тестовых сегментов
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>└── Host/Program.cs               — прогон: узкое окно пира, один сегмент не по порядку
+</code></pre></div>
+<p><strong>Пример прогона</strong> (MSS=4, окно пира=12 байт — не больше трёх сегментов
+одновременно, один сегмент намеренно приходит не по порядку):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>[step 4] DELIVER seq=1017 len=6 -&gt; OutOfOrder     &lt;- сегмент не по порядку
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>[step 5] DELIVER seq=1001 len=4 -&gt; InOrder        &lt;- закрывает окно
+</code></pre></div>
+<p><strong>Почему <code>SlidingWindowTracker</code> потом (в 3.4.10) разделили на два класса —
+это стоит увидеть здесь, а не постфактум.</strong> В этом проекте
+<code>SlidingWindowTracker</code> хранит <strong>обе</strong> стороны соединения — и SND-, и
+RCV-переменные — в одном объекте, а входящий сегмент просто
+классифицируется (<code>InOrder</code>/<code>OutOfOrder</code>/<code>Duplicate</code>), и на <code>OutOfOrder</code>
+данные отбрасываются. Как только ниже (3.4.5–3.4.9) появляется настоящий
+reassembly-буфер, <code>RCV.NXT</code> перестаёт быть просто полем — он становится
+производной от состояния этого буфера. Держать оба источника истины
+одновременно — гарантированный баг. Это не абстрактное предостережение:
+разделение на <code>TcpSendWindow</code> (только SND) и <code>TcpReceiveEndpoint</code>
+(reassembler + честный RCV.WND), которое встретится в практическом проекте
+3.4.10, — прямое следствие того, что этот наивный вариант уже был написан
+и на нём стала видна структурная ошибка.</p>
+<hr />
+<h3 id="345-segment-acceptability">3.4.5 Segment Acceptability — можно ли вообще принять сегмент<a class="headerlink" href="#345-segment-acceptability" title="Permanent link">&para;</a></h3>
+<p>Прежде чем receive-side логика вообще решает, куда положить пришедшие байты,
+RFC 9293 требует проверку <strong>допустимости</strong> сегмента: попадает ли его
+sequence number в текущее receive window. Грубо:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>допустим ⟺ RCV.NXT ≤ SEG.SEQ &lt; RCV.NXT + RCV.WND
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>           (с оговорками для сегментов нулевой длины)
+</code></pre></div>
+<p>Три исхода:
+- <strong>Сегмент полностью в прошлом</strong> (<code>SEG.SEQ + SEG.LEN ≤ RCV.NXT</code>) — это
+  ретрансмит уже подтверждённых данных, отбрасывается как duplicate.
+- <strong>Сегмент полностью в будущем за пределами окна</strong> — получатель физически
+  не готов его буферизовать, отбрасывается (в реальном TCP — с ACK,
+  напоминающим текущий RCV.NXT).
+- <strong>Сегмент (частично) внутри окна</strong> — обрабатывается дальше, при
+  необходимости обрезается по границам окна.</p>
+<p>Это ровно тот же тест, который выполняет <code>Push()</code> в <code>TcpStreamReassembler</code>
+(проект ниже) в самом начале — до какой-либо работы с out-of-order очередью.</p>
+<h3 id="346-rcvnxt">3.4.6 RCV.NXT — что уже точно доставлено приложению<a class="headerlink" href="#346-rcvnxt" title="Permanent link">&para;</a></h3>
+<p><code>RCV.NXT</code> — это единственный указатель, отделяющий "уже отдано приложению
+непрерывным потоком" от "ещё нет". Когда приходит сегмент с
+<code>SEQ == RCV.NXT</code>, его можно отдать приложению немедленно. Когда
+<code>SEQ &gt; RCV.NXT</code> — часть потока между ними ещё не пришла, и сегмент нужно
+куда-то деть, не теряя.</p>
+<h3 id="347-out-of-order-queue">3.4.7 Out-of-Order Queue<a class="headerlink" href="#347-out-of-order-queue" title="Permanent link">&para;</a></h3>
+<p>Именно здесь сегменты с <code>SEQ &gt; RCV.NXT</code> временно оседают — в буфере,
+организованном как набор непересекающихся диапазонов <code>[Start, End)</code>,
+отсортированных по <code>Start</code>. При каждом новом входящем сегменте:</p>
+<ol>
+<li>Если он ровно закрывает текущий <code>RCV.NXT</code> — отдаём приложению, сдвигаем
+   <code>RCV.NXT</code>, и <strong>сразу проверяем</strong>, не закрывает ли новый <code>RCV.NXT</code> ещё и
+   следующий уже буферизованный диапазон (один входящий сегмент может
+   вытянуть за собой сразу несколько ранее буферизованных).</li>
+<li>Если нет — кладём в очередь и ждём.</li>
+</ol>
+<p>Реализация этой очереди без деградации на патологическом трафике (тысячи
+мелких диапазонов) — источник production-проблемы <strong>"Out-of-Order queue
+exhaustion"</strong> из 3.9 (Проблема 6): без явного лимита на число диапазонов
+атакующий может держать receiver в состоянии постоянного роста метаданных,
+даже если суммарный объём "полезных" байт невелик.</p>
+<h3 id="348-overlapping-duplicate">3.4.8 Overlapping и Duplicate сегменты<a class="headerlink" href="#348-overlapping-duplicate" title="Permanent link">&para;</a></h3>
+<p>Ретрансмиты и параллельные пути в сети (см. ECMP-reordering, Проблема 7 из
+3.9) означают, что один и тот же диапазон байт иногда приходит дважды, а
+иногда — частично пересекающимися кусками с разным содержимым (при
+ретрансмите с изменённой сегментацией). Нужна явная политика:</p>
+<ul>
+<li><strong>Duplicate</strong> — новый сегмент целиком уже покрыт тем, что либо уже
+  доставлено (до <code>RCV.NXT</code>), либо уже лежит в out-of-order очереди.
+  Отбрасывается без побочных эффектов.</li>
+<li><strong>Overlap</strong> — новый сегмент частично пересекается с уже сохранённым
+  диапазоном. RFC не диктует одну обязательную политику; на практике
+  используется <strong>first data wins</strong> (то, что пришло и было принято первым,
+  не переписывается более поздними перекрывающими байтами) — так делает
+  большинство стеков, и так же сделан <code>TcpStreamReassembler</code> ниже. Есть и
+  другая крайность — детектировать и явно сигнализировать конфликт
+  (актуально для IDS/анализаторов трафика, но не для обычного TCP
+  endpoint'а).</li>
+</ul>
+<h3 id="349-memory-management">3.4.9 Memory Management<a class="headerlink" href="#349-memory-management" title="Permanent link">&para;</a></h3>
+<p>Receive buffer не бесконечен. Даже при корректной Segment Acceptability
+проверке (3.4.5) без явных лимитов на <strong>число</strong> буферизованных диапазонов
+(отдельно от их суммарного байтового объёма) возможна amplification-атака:
+тысячи однобайтовых диапазонов с гэпами между ними создают тысячи объектов
+метаданных при небольшом реальном потреблении "полезных" байт. В Linux это
+ограничивается <code>tcp_max_orphans</code>/<code>tcp_rmem</code> и агрессивным
+<code>tcp_collapse_ofo_queue()</code>. В практическом проекте ниже — отдельным
+параметром <code>maxBufferedRanges</code>.</p>
+<hr />
+<h3 id="3410-tcpoutoforderreassembler">3.4.10 Практический проект: TcpOutOfOrderReassembler<a class="headerlink" href="#3410-tcpoutoforderreassembler" title="Permanent link">&para;</a></h3>
+<p>Всё из 3.4.5–3.4.9 реализовано в <code>TcpOutOfOrderReassembly</code> — reassembler
+одного направления одного TCP-соединения на .NET 9, без претензии на полный
+TCP stack (нет checksum, state machine, SYN/FIN — это receive-side payload
+reassembly в чистом виде).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>TcpOutOfOrderReassembly/
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>├── TcpOutOfOrderReassembly.csproj
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>├── TcpSequence.cs              — модульная арифметика sequence number (wrap-around)
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>├── BufferedSegment.cs           — один диапазон [Start,End), арендует буфер через ArrayPool&lt;byte&gt;
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>├── TcpStreamReassembler.cs      — Push(), Segment Acceptability, Out-of-Order Queue, drain
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>└── Program.cs                   — 3 демонстрационных сценария: reorder, overlap, wrap-around
+</code></pre></div>
+<p>Ключевые инженерные решения, на которые стоит обратить внимание при чтении
+кода (не только "что делает", но и "почему так"):</p>
+<ul>
+<li><strong>Развёрнутая 64-битная координата.</strong> <code>uint</code> sequence number сам по себе
+  неудобен для сортировки диапазонов из-за wrap-around — <code>4294967290 → 0</code>
+  числовая сортировка ставит некорректно. Reassembler разворачивает <code>uint</code>
+  в <code>long</code> относительно текущего <code>RCV.NXT</code> один раз, при вставке, и дальше
+  работает с обычной монотонной координатой.</li>
+<li><strong><code>ArrayPool&lt;byte&gt;</code> вместо <code>byte[]</code> на каждый сегмент</strong> — но здесь же и
+  первая ловушка: пул не ограничивает реальную занятую память по размеру
+  окна, потому что <code>Rent(1)</code> может вернуть массив заметно больше одного
+  байта. Отдельный <code>maxBufferedRanges</code> — прямая реализация 3.4.9.</li>
+<li><strong>Порядок операций в доставке данных приложению принципиален.</strong> Диапазон
+  удаляется из дерева и возвращается в пул <strong>только после</strong> успешного
+  возврата из пользовательского callback'а, а не до. Более ранняя версия
+  этого кода делала наоборот — и при исключении в callback'е данные
+  оказывались уже физически стёрты, а <code>RCV.NXT</code> не продвинут: инвариант
+  "RCV.NXT указывает на первый ещё не отданный байт" нарушался, байты
+  терялись безвозвратно. Это ровно тот класс ошибок, который стоит поймать
+  читателю самому при code review, прежде чем смотреть готовый код.</li>
+</ul>
+<p><strong>Тесты.</strong> Проект покрыт xUnit-тестами (<code>tests/TcpOutOfOrderReassembly.Tests</code>)
+— 20 сценариев: in-order и out-of-order доставка, дубликаты до и после
+доставки, left/right overlap, сегмент поверх нескольких буферизованных
+диапазонов и наоборот, обрезка по границам receive window, wrap-around
+(одиночный и множественный), поведение при исключении в callback'е,
+реентерабельный вызов <code>Push</code> изнутри callback'а, <code>Dispose</code> с ещё
+буферизованными данными, лимит <code>maxBufferedRanges</code> — включая
+задокументированный тестом пограничный случай, когда лимит отклоняет
+сегмент, который на самом деле уменьшил бы фрагментацию, и рандомизированный
+тест на нескольких сидах, разбивающий эталонный поток на случайные чанки в
+случайном порядке.</p>
+<p><strong>Как проверить себя.</strong> Прежде чем смотреть готовую реализацию — попробуйте
+ответить на три вопроса, имея только 3.4.5–3.4.9: (1) что произойдёт, если
+callback, которому вы отдаёте собранные байты, бросит исключение? (2) что
+мешает атакующему заставить ваш reassembler хранить неограниченное число
+диапазонов, даже если суммарный объём данных мал? (3) может ли ваш callback
+сам, синхронно, вызвать <code>Push</code> ещё раз — и что тогда будет с внутренним
+состоянием? Все три вопроса — реальные баги, найденные и исправленные в
+процессе работы над этим кодом, а не гипотетические придирки.</p>
+<hr />
+<p><strong>Следующая часть:</strong> 3.5 Retransmission — что происходит, когда часть этого
+потока вообще не приходит.</p>
+<hr />
+<h2 id="35-retransmission">Часть 3.5: Retransmission — Когда пакеты теряются<a class="headerlink" href="#35-retransmission" title="Permanent link">&para;</a></h2>
+<h3 id="rto-retransmission-timeout">RTO (Retransmission Timeout)<a class="headerlink" href="#rto-retransmission-timeout" title="Permanent link">&para;</a></h3>
+<p>Если ACK не пришёл за RTO — пакет считается потерянным и отправляется повторно.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1">// net/ipv4/tcp_input.c</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1">// Обновление SRTT и RTO по алгоритму Jacobson/Karels</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">tcp_rtt_estimator</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">mrtt_us</span><span class="p">)</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="p">{</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">tcp_sock</span><span class="w"> </span><span class="o">*</span><span class="n">tp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tcp_sk</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">    </span><span class="kt">long</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mrtt_us</span><span class="p">;</span><span class="w">  </span><span class="c1">// Измеренный RTT</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">srtt_us</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="w">        </span><span class="c1">// Первое измерение</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="w">        </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">srtt_us</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">      </span><span class="c1">// SRTT = RTT</span>
+<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="w">        </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">mdev_us</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">      </span><span class="c1">// RTTVAR = RTT/2</span>
+<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="w">        </span><span class="c1">// Экспоненциальное скользящее среднее</span>
+<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="w">        </span><span class="c1">// SRTT = (1 - 1/8) * SRTT + 1/8 * RTT</span>
+<a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">srtt_us</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+<a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a><span class="w">        </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">srtt_us</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">err</span><span class="p">;</span>
+<a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>
+<a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a><span class="w">        </span><span class="c1">// RTTVAR = (1 - 1/4) * RTTVAR + 1/4 * |RTT - SRTT|</span>
+<a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="n">err</span><span class="p">;</span>
+<a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a><span class="w">        </span><span class="n">err</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">mdev_us</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a><span class="w">        </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">mdev_us</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">err</span><span class="p">;</span>
+<a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>
+<a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a><span class="w">    </span><span class="c1">// RTO = SRTT + 4 * RTTVAR</span>
+<a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a><span class="w">    </span><span class="c1">// Минимум 200ms, максимум 120 секунд</span>
+<a id="__codelineno-20-26" name="__codelineno-20-26" href="#__codelineno-20-26"></a><span class="w">    </span><span class="n">inet_csk</span><span class="p">(</span><span class="n">sk</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">icsk_rto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">max</span><span class="p">(</span><span class="n">TCP_RTO_MIN</span><span class="p">,</span>
+<a id="__codelineno-20-27" name="__codelineno-20-27" href="#__codelineno-20-27"></a><span class="w">        </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">srtt_us</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">mdev_us</span><span class="p">);</span>
+<a id="__codelineno-20-28" name="__codelineno-20-28" href="#__codelineno-20-28"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>RTO = SRTT + 4 × RTTVAR</strong> — формула Jacobson/Karels (RFC 6298). SRTT (Smoothed RTT) — сглаженное среднее. RTTVAR — вариация. Множитель 4 обеспечивает устойчивость к джиттеру.</p>
+<h3 id="fast-retransmit">Fast Retransmit<a class="headerlink" href="#fast-retransmit" title="Permanent link">&para;</a></h3>
+<p>Ждать RTO (сотни мс) — слишком долго. Fast Retransmit реагирует на <strong>3 дублирующих ACK</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1">// net/ipv4/tcp_input.c (упрощённо)</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">tcp_fastretrans_alert</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="p">{</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">tcp_sock</span><span class="w"> </span><span class="o">*</span><span class="n">tp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tcp_sk</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="w">    </span><span class="c1">// 3 дублирующих ACK = потеря</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">sacked_out</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">reordering</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// reordering обычно = 3</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="w">        </span><span class="c1">// Входим в Fast Recovery</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a><span class="w">        </span><span class="n">tcp_enter_recovery</span><span class="p">(</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">);</span>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a><span class="w">        </span><span class="c1">// Повторная отправка потерянного сегмента</span>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a><span class="w">        </span><span class="n">tcp_retransmit_skb</span><span class="p">(</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">tcp_rtx_queue_head</span><span class="p">(</span><span class="n">sk</span><span class="p">),</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="sack-selective-acknowledgment">SACK (Selective Acknowledgment)<a class="headerlink" href="#sack-selective-acknowledgment" title="Permanent link">&para;</a></h3>
+<p>Без SACK получатель может сказать только «я получил всё до байта X». С SACK он сообщает <strong>блоки</strong> полученных данных:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>Отправлено: [1-1000] [1001-2000] [2001-3000] [3001-4000]
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>Получено:   [1-1000]             [2001-3000] [3001-4000]
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>Без SACK:   ACK=1001  (потерян 1001-2000, но отправитель не знает про 2001+)
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>С SACK:     ACK=1001, SACK=2001-4000  (отправитель знает: повторить только 1001-2000)
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Включено по умолчанию</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>net.ipv4.tcp_sack<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<h3 id="rack-recent-acknowledgment">RACK (Recent ACKnowledgment)<a class="headerlink" href="#rack-recent-acknowledgment" title="Permanent link">&para;</a></h3>
+<p>Современная замена дупликатным ACK. Вместо подсчёта дупликатов RACK использует <strong>время</strong>: если пакет не подтверждён в течение <code>min_rtt + reordering_window</code>, он считается потерянным.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1">// net/ipv4/tcp_recovery.c</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="c1">// RACK определяет потерю по времени, а не по количеству дупликатов</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">tcp_rack_detect_loss</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">u32</span><span class="w"> </span><span class="o">*</span><span class="n">reo_timeout</span><span class="p">)</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="p">{</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">tcp_sock</span><span class="w"> </span><span class="o">*</span><span class="n">tp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tcp_sk</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">    </span><span class="c1">// Порог: самый свежий ACK timestamp - reo_wnd</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="w">    </span><span class="c1">// Если пакет отправлен раньше этого порога и не ACKed — потерян</span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="w">    </span><span class="n">s32</span><span class="w"> </span><span class="n">remaining</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">rack</span><span class="p">.</span><span class="n">rtt_us</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">rack</span><span class="p">.</span><span class="n">reo_wnd_us</span><span class="w"> </span><span class="o">-</span>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="w">                    </span><span class="n">tcp_stamp_us_delta</span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">tcp_mstamp</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="o">-&gt;</span><span class="n">skb_mstamp</span><span class="p">);</span>
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">remaining</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a><span class="w">        </span><span class="c1">// Пакет потерян</span>
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a><span class="w">        </span><span class="n">tcp_mark_skb_lost</span><span class="p">(</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">);</span>
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a><span class="p">}</span>
+</code></pre></div>
+<p>RACK включён по умолчанию в современных ядрах и постепенно заменяет классический Fast Retransmit.</p>
+<hr />
+<h2 id="36-four-way-handshake">Часть 3.6: Закрытие соединения — Four-Way Handshake<a class="headerlink" href="#36-four-way-handshake" title="Permanent link">&para;</a></h2>
+<h3 id="_5">Нормальное закрытие<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>Клиент (Active Close)              Сервер (Passive Close)
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>  │                                    │
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>  │  FIN (seq=X)                       │
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>  │───────────────────────────────────→│  FIN_WAIT_1 → CLOSE_WAIT
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>  │                                    │
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>  │  ACK (ack=X+1)                     │
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>  │←───────────────────────────────────│  FIN_WAIT_2
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>  │                                    │
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>  │       ... сервер может ещё         │
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>  │       отправлять данные ...        │
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>  │                                    │
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>  │  FIN (seq=Y)                       │
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a>  │←───────────────────────────────────│  LAST_ACK
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a>  │                                    │
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>  │  ACK (ack=Y+1)                     │
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a>  │───────────────────────────────────→│  CLOSED
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>  │  TIME_WAIT (2MSL)                  │
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a>  │       ...                          │
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a>  │  CLOSED                            │
+</code></pre></div>
+<pre class="mermaid"><code>sequenceDiagram
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: ESTABLISHED
+
+    C-&gt;&gt;S: FIN (seq=X)
+    Note over C: FIN_WAIT_1
+    S--&gt;&gt;C: ACK (ack=X+1)
+    Note over S: CLOSE_WAIT
+    Note over C: FIN_WAIT_2
+
+    rect rgb(240, 240, 240)
+    Note over S: Сервер продолжает&lt;br/&gt;отправку данных (если есть)
+    end
+
+    S-&gt;&gt;C: FIN (seq=Y)
+    Note over S: LAST_ACK
+
+    C-&gt;&gt;S: ACK (ack=Y+1)
+    Note over C: TIME_WAIT (2MSL)
+    Note over S: CLOSED
+
+    Note over C: CLOSED (после тайм-аута)</code></pre>
+<h3 id="close_wait">CLOSE_WAIT: Ваш код сломан<a class="headerlink" href="#close_wait" title="Permanent link">&para;</a></h3>
+<p>CLOSE_WAIT означает: <strong>другая сторона закрыла соединение (послала FIN), но ваше приложение не вызвало <code>close()</code></strong>. Это <strong>всегда</strong> баг в приложении — утечка сокетов.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1"># Найти процессы с утечкой</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>ss<span class="w"> </span>-tanp<span class="w"> </span>state<span class="w"> </span>close-wait
+</code></pre></div>
+<p>Если видите тысячи CLOSE_WAIT для одного процесса — ищите незакрытые соединения в коде.</p>
+<h3 id="time_wait-2msl">TIME_WAIT: Зачем ждать 2MSL<a class="headerlink" href="#time_wait-2msl" title="Permanent link">&para;</a></h3>
+<p>TIME_WAIT длится 2 × MSL (Maximum Segment Lifetime, обычно 60 секунд в Linux). Зачем?</p>
+<ol>
+<li><strong>Защита от запоздалых пакетов</strong>: если старый пакет от предыдущего соединения ещё бродит по сети, TIME_WAIT гарантирует, что он не попадёт в новое соединение с теми же (src, dst, sport, dport).</li>
+<li><strong>Надёжное закрытие</strong>: если последний ACK потерялся, сервер перешлёт FIN, и клиент в TIME_WAIT сможет ответить повторным ACK.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c1">// net/ipv4/tcp_minisocks.c</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="cp">#define TCP_TIMEWAIT_LEN (60 * HZ)  </span><span class="c1">// 60 секунд</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="c1">// TIME_WAIT использует облегчённую структуру (не полный struct sock)</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="k">struct</span><span class="w"> </span><span class="nc">inet_timewait_sock</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">sock_common</span><span class="w">  </span><span class="n">__tw_common</span><span class="p">;</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="w">    </span><span class="k">volatile</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">tw_substate</span><span class="p">;</span>
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a><span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w">       </span><span class="n">tw_rcv_wscale</span><span class="p">;</span>
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a><span class="w">    </span><span class="n">__be16</span><span class="w">              </span><span class="n">tw_sport</span><span class="p">;</span>
+<a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a><span class="w">    </span><span class="c1">// ... минимум полей для экономии памяти</span>
+<a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a><span class="w">    </span><span class="c1">// ~160 байт вместо ~2000 байт полного sock</span>
+<a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a><span class="p">};</span>
+</code></pre></div>
+<h3 id="time_wait-exhaustion">TIME_WAIT Exhaustion<a class="headerlink" href="#time_wait-exhaustion" title="Permanent link">&para;</a></h3>
+<p>На нагруженном прокси/балансировщике (Nginx, HAProxy) тысячи исходящих соединений закрываются каждую секунду. Каждое висит в TIME_WAIT 60 секунд. При 10K conn/sec: 600K сокетов в TIME_WAIT. Это исчерпывает ephemeral ports (по умолчанию 28232 порта).</p>
+<p><strong>Решения:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># 1. Переиспользовать TIME_WAIT для исходящих (БЕЗОПАСНО)</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>net.ipv4.tcp_tw_reuse<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="c1"># Работает ТОЛЬКО с tcp_timestamps=1</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="c1"># Проверяет, что timestamp нового соединения &gt; старого</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="c1"># 2. Расширить диапазон ephemeral портов</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>net.ipv4.ip_local_port_range<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1024</span><span class="w"> </span><span class="m">65535</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a><span class="c1"># Даёт 64511 портов вместо 28232</span>
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>
+<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a><span class="c1"># 3. НИКОГДА не используйте tcp_tw_recycle</span>
+<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a><span class="c1"># Удалён из ядра с версии 4.12 (ломает NAT)</span>
+</code></pre></div>
+<h3 id="rst">RST: Аварийное закрытие<a class="headerlink" href="#rst" title="Permanent link">&para;</a></h3>
+<p>RST (Reset) — немедленное уничтожение соединения без handshake:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1">// Отправка RST в ядре</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="c1">// net/ipv4/tcp_output.c</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="kt">void</span><span class="w"> </span><span class="nf">tcp_send_active_reset</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">gfp_t</span><span class="w"> </span><span class="n">priority</span><span class="p">)</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="p">{</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">sk_buff</span><span class="w"> </span><span class="o">*</span><span class="n">skb</span><span class="p">;</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="w">    </span><span class="n">skb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alloc_skb</span><span class="p">(</span><span class="n">MAX_TCP_HEADER</span><span class="p">,</span><span class="w"> </span><span class="n">priority</span><span class="p">);</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="w">    </span><span class="n">tcp_init_nondata_skb</span><span class="p">(</span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="n">tcp_acceptable_seq</span><span class="p">(</span><span class="n">sk</span><span class="p">),</span>
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a><span class="w">                          </span><span class="n">TCPHDR_ACK</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">TCPHDR_RST</span><span class="p">);</span>
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a><span class="w">    </span><span class="n">tcp_transmit_skb</span><span class="p">(</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">skb</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">priority</span><span class="p">);</span>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Когда ядро отправляет RST:</strong>
+- Пакет пришёл на закрытый порт (нет listener)
+- Пакет не принадлежит ни одному известному соединению
+- Приложение вызвало <code>close()</code> с <code>SO_LINGER</code> linger=0 (abort)
+- SYN пришёл на порт, где backlog переполнен (и нет SYN cookies)</p>
+<p><strong>Диагностика:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="c1"># Счётчики RST</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>nstat<span class="w"> </span>-az<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>rst
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="c1"># TcpExtTCPAbortOnData    — RST при наличии непрочитанных данных</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="c1"># TcpExtTCPAbortOnClose   — RST из-за SO_LINGER=0</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="c1"># TcpExtTCPAbortOnMemory  — RST из-за нехватки памяти</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="c1"># TcpExtTCPAbortOnTimeout — RST по таймауту</span>
+</code></pre></div>
+<hr />
+<h2 id="37-tcp">Часть 3.7: Таймеры TCP<a class="headerlink" href="#37-tcp" title="Permanent link">&para;</a></h2>
+<p>TCP использует несколько таймеров, каждый с своей целью:</p>
+<h3 id="1-retransmission-timer-rto">1. Retransmission Timer (RTO)<a class="headerlink" href="#1-retransmission-timer-rto" title="Permanent link">&para;</a></h3>
+<p>Пересылка неподтверждённых данных. Значение: <code>SRTT + 4×RTTVAR</code> (см. раздел 3.5).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1"># Посмотреть текущий RTO для соединения</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>ss<span class="w"> </span>-ti<span class="w"> </span>dst<span class="w"> </span><span class="m">10</span>.0.0.2
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="c1"># rto:204  — RTO в миллисекундах</span>
+</code></pre></div>
+<h3 id="2-persist-timer-zero-window-probe">2. Persist Timer (Zero Window Probe)<a class="headerlink" href="#2-persist-timer-zero-window-probe" title="Permanent link">&para;</a></h3>
+<p>Когда получатель объявляет <code>rwnd=0</code> (буфер полон), отправитель не может слать данные. Persist timer периодически шлёт <strong>window probe</strong> — 1-байтовый сегмент, чтобы узнать, не открылось ли окно.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="c1">// net/ipv4/tcp_timer.c</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">tcp_probe_timer</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">sock</span><span class="w"> </span><span class="o">*</span><span class="n">sk</span><span class="p">)</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="p">{</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">tcp_sock</span><span class="w"> </span><span class="o">*</span><span class="n">tp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tcp_sk</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="w">    </span><span class="c1">// Если окно всё ещё закрыто — отправляем probe</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">tp</span><span class="o">-&gt;</span><span class="n">snd_wnd</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="w">        </span><span class="n">tcp_send_probe0</span><span class="p">(</span><span class="n">sk</span><span class="p">);</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="w">        </span><span class="c1">// Экспоненциальный backoff: 500ms, 1s, 2s, 4s, ...</span>
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="w">        </span><span class="n">inet_csk_reset_xmit_timer</span><span class="p">(</span><span class="n">sk</span><span class="p">,</span><span class="w"> </span><span class="n">ICSK_TIME_PROBE0</span><span class="p">,</span>
+<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="w">                                   </span><span class="n">min</span><span class="p">(</span><span class="n">icsk</span><span class="o">-&gt;</span><span class="n">icsk_rto</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">icsk</span><span class="o">-&gt;</span><span class="n">icsk_backoff</span><span class="p">,</span>
+<a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a><span class="w">                                       </span><span class="n">TCP_RTO_MAX</span><span class="p">),</span><span class="w"> </span><span class="n">TCP_RTO_MAX</span><span class="p">);</span>
+<a id="__codelineno-32-13" name="__codelineno-32-13" href="#__codelineno-32-13"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-32-14" name="__codelineno-32-14" href="#__codelineno-32-14"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="3-keepalive-timer">3. Keepalive Timer<a class="headerlink" href="#3-keepalive-timer" title="Permanent link">&para;</a></h3>
+<p>Проверяет, жив ли партнёр, при idle-соединении:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>net.ipv4.tcp_keepalive_time<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">7200</span><span class="w">   </span><span class="c1"># 2 часа до первого probe</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>net.ipv4.tcp_keepalive_intvl<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">75</span><span class="w">    </span><span class="c1"># 75 сек между probe</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>net.ipv4.tcp_keepalive_probes<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">9</span><span class="w">    </span><span class="c1"># 9 проб до RST</span>
+</code></pre></div>
+<p>Итого: соединение признаётся мёртвым через <code>7200 + 75 × 9 = 7875 секунд</code> (~2.2 часа). Для production это слишком долго — используйте application-level heartbeat.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="c1">// Включение keepalive в коде</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="kt">int</span><span class="w"> </span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">SOL_SOCKET</span><span class="p">,</span><span class="w"> </span><span class="n">SO_KEEPALIVE</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">val</span><span class="p">));</span>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="c1">// Настройка per-socket (переопределяет sysctl)</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a><span class="kt">int</span><span class="w"> </span><span class="n">idle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span><span class="p">;</span><span class="w">    </span><span class="c1">// Начать probes через 60 сек idle</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="kt">int</span><span class="w"> </span><span class="n">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span><span class="w"> </span><span class="c1">// Интервал 5 сек</span>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">    </span><span class="c1">// 3 пробы</span>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">IPPROTO_TCP</span><span class="p">,</span><span class="w"> </span><span class="n">TCP_KEEPIDLE</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">idle</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">idle</span><span class="p">));</span>
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">IPPROTO_TCP</span><span class="p">,</span><span class="w"> </span><span class="n">TCP_KEEPINTVL</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">interval</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">interval</span><span class="p">));</span>
+<a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">IPPROTO_TCP</span><span class="p">,</span><span class="w"> </span><span class="n">TCP_KEEPCNT</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">count</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">count</span><span class="p">));</span>
+</code></pre></div>
+<h3 id="4-time_wait-timer-2msl">4. TIME_WAIT Timer (2MSL)<a class="headerlink" href="#4-time_wait-timer-2msl" title="Permanent link">&para;</a></h3>
+<p>60 секунд в Linux (не настраивается через sysctl, захардкожено в ядре).</p>
+<h3 id="5-fin_wait_2-timer">5. FIN_WAIT_2 Timer<a class="headerlink" href="#5-fin_wait_2-timer" title="Permanent link">&para;</a></h3>
+<p>Если после отправки FIN и получения ACK вторая сторона не закрывается:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>net.ipv4.tcp_fin_timeout<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span><span class="w">   </span><span class="c1"># Таймаут FIN_WAIT_2 (секунды)</span>
+</code></pre></div>
+<hr />
+<h3 id="371-rfc">3.7.1 RFC — сводка по модулю<a class="headerlink" href="#371-rfc" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>RFC 9293</strong> — TCP core (state machine, 3-way handshake, closing — весь модуль опирается на него).</li>
+<li><strong>RFC 7323</strong> — TCP Extensions for High Performance (Window Scaling, Timestamps — 3.4).</li>
+<li><strong>RFC 6298</strong> — Computing TCP's Retransmission Timer (формула SRTT + 4×RTTVAR — 3.5).</li>
+<li><strong>RFC 2018 / RFC 6675</strong> — TCP Selective Acknowledgment (SACK) и его использование при recovery (3.5).</li>
+<li><strong>RFC 8985</strong> — RACK-TLP (замена classic Fast Retransmit по времени, а не по счётчику дубликатов — 3.5).</li>
+<li><strong>RFC 5961</strong> — Improving TCP's Robustness to Blind In-Window Attacks (политики обработки overlap/RST, на которые опирается разница Linux/Windows ниже).</li>
+<li><strong>RFC 8446</strong> — TLS 1.3 (для 3.10).</li>
+<li><strong>RFC 7413</strong> — TCP Fast Open (3.3).</li>
+</ul>
+<hr />
+<h3 id="372-tcpreceivepipeline-delayed-ack-rto">3.7.2 Практический проект: TcpReceivePipeline — Delayed ACK и RTO<a class="headerlink" href="#372-tcpreceivepipeline-delayed-ack-rto" title="Permanent link">&para;</a></h3>
+<p>Здесь 3.5 (Retransmission) и 3.7 (Таймеры) сходятся в одном коде: получатель
+должен решить, ACK-ить сейчас или подождать (Delayed ACK), а отправитель —
+когда считать сегмент потерянным (RTO). Проект строится поверх 3.4.4 и
+3.4.10: <code>TcpSendWindow</code> (SND-сторона, выделенная из 3.4.4 после разделения
+<code>SlidingWindowTracker</code>) и <code>TcpReceiveEndpoint</code> + <code>TcpStreamReassembler</code>
+(3.4.10, без изменений) — и добавляет поверх четыре новых файла:</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>TcpReceivePipeline/
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>├── TcpReceivePipeline.csproj
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>├── Core/
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>│   ├── TcpSendWindow.cs, TcpReceiveEndpoint.cs   — из 3.4.4/3.4.10
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>│   ├── TcpStreamReassembler.cs, BufferedSegment.cs, TcpSequence.cs  — из 3.4.10
+<a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>│   ├── InFlightSegment.cs         — отправленный, не подтверждённый сегмент
+<a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>│   │                                 (payload — копия byte[], не срез чужого буфера:
+<a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>│   │                                  должен пережить время в полёте и ретрансмит)
+<a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a>│   ├── RetransmissionTimer.cs     — RTO по RFC 6298 (Jacobson/Karels):
+<a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a>│   │                                 SRTT = (1-α)·SRTT + α·R
+<a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a>│   │                                 RTTVAR = (1-β)·RTTVAR + β·|SRTT - R|
+<a id="__codelineno-36-12" name="__codelineno-36-12" href="#__codelineno-36-12"></a>│   │                                 RTO = SRTT + max(G, 4·RTTVAR)
+<a id="__codelineno-36-13" name="__codelineno-36-13" href="#__codelineno-36-13"></a>│   │                                 + экспоненциальный backoff (Karn&#39;s algorithm, §5.5)
+<a id="__codelineno-36-14" name="__codelineno-36-14" href="#__codelineno-36-14"></a>│   ├── RetransmissionController.cs — очередь неподтверждённых сегментов,
+<a id="__codelineno-36-15" name="__codelineno-36-15" href="#__codelineno-36-15"></a>│   │                                  duplicate-ACK счётчик для fast retransmit
+<a id="__codelineno-36-16" name="__codelineno-36-16" href="#__codelineno-36-16"></a>│   │                                  (RFC 5681 §3.2: 3 подряд с тем же номером)
+<a id="__codelineno-36-17" name="__codelineno-36-17" href="#__codelineno-36-17"></a>│   └── DelayedAckPolicy.cs        — RFC 1122 §4.2.3.2: ACK хотя бы на каждый
+<a id="__codelineno-36-18" name="__codelineno-36-18" href="#__codelineno-36-18"></a>│                                     второй full-size сегмент, предел задержки,
+<a id="__codelineno-36-19" name="__codelineno-36-19" href="#__codelineno-36-19"></a>│                                     немедленный ACK на любой gap
+<a id="__codelineno-36-20" name="__codelineno-36-20" href="#__codelineno-36-20"></a>├── Infrastructure/  — те же парсер/генератор, что и в 3.4.4
+<a id="__codelineno-36-21" name="__codelineno-36-21" href="#__codelineno-36-21"></a>└── Host/Program.cs  — событийный прогон с PriorityQueue&lt;Action,double&gt;
+</code></pre></div>
+Забегая вперёд: в <code>Core/</code> уже физически лежит <code>CongestionController.cs</code> —
+единый проект для 3.7.2 и 4.11 не хранит отдельных версий кода на каждую
+главу. До 4.11 этот файл не используется <code>Host/Program.cs</code> данной главы;
+<code>usable window</code> здесь по-прежнему равен просто <code>rwnd</code>, без учёта <code>cwnd</code>. Не
+баг и не забытый файл — увидите его в деле в Модуле 4.</p>
+<p><strong>Правило Карна (Karn's algorithm) — не техническая деталь, а обязательное
+условие корректности RTO.</strong> Если среди сегментов, подтверждённых одним ACK,
+есть хоть один ретранслированный — RTT-выборка <strong>не берётся вообще</strong>,
+потому что невозможно определить, какой из двух отправок (оригинальной или
+повторной) соответствует этот ACK. Взять выборку в этом случае — значит
+исказить SRTT в случайную сторону, причём именно в момент, когда сеть уже
+находится в состоянии потерь и точность RTO важнее всего.</p>
+<p><strong>Появляется настоящее время — и вместе с ним новая инженерная проблема.</strong>
+<code>Host/Program.cs</code> вводит <code>PriorityQueue&lt;Action,double&gt;</code> как очередь событий
+вместо дискретных раундов. У этой очереди нет операции "отменить
+запланированный элемент", а таймеры нужно перезапускать постоянно (новый ACK
+продвинул <code>SND.UNA</code> — RTO пересчитывается; сегмент дошёл не по порядку —
+отложенный ACK отменяется в пользу немедленного). Решение — <strong>generation-
+счётчик</strong>: при каждом логическом перезапуске таймера счётчик увеличивается;
+сработавший callback сверяет захваченное им число с текущим и, если не
+совпало, тихо ничего не делает. Не нужно уметь удалять из очереди —
+устаревшие события просто гаснут сами. Этот же приём встретится ещё раз в
+практическом проекте Модуля 4 (RTO-watchdog и delayed-ACK deadline — не
+совпадение, а один и тот же паттерн, применённый к двум независимым
+таймерам).</p>
+<p><strong>Пример прогона</strong> (6 сегментов по 4 байта, второй теряется в сети):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>[t=1.05] DELIVER seq=1021 -&gt; ACK ack=1005 (duplicate #3!)
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>           FAST RETRANSMIT (до RTO ещё 2.0 тика)
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>[t=1.05] RETRANSMIT seq=1005
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>[t=2.05] DELIVER seq=1005 -&gt; Accepted
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>           -&gt; application: &quot;EFGH&quot; &quot;IJKL&quot; &quot;MNOP&quot; &quot;QRST&quot; &quot;UVWX&quot;  (каскад, 5 диапазонов)
+<a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a>[t=3.55] ACK ack=1025 win=64   &lt;- Karn&#39;s rule: RTT-сэмпл НЕ берём
+<a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a>                                   (среди подтверждённых был ретрансмит)
+<a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>
+<a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a>Final stream: &quot;ABCDEFGHIJKLMNOPQRSTUVWX&quot;
+</code></pre></div>
+<p>Ключевая цифра: fast retransmit сработал на 2 тика раньше, чем успел бы
+истечь RTO — это и есть содержательный ответ на "зачем нужен fast
+retransmit, если есть таймер".</p>
+<p><strong>Две ошибки, найденные трассировкой (а не компилятором).</strong> Это стоит
+оставить в книге как есть — ровно тот случай, когда рассуждение находит то,
+что не находит запуск:</p>
+<ol>
+<li>Без искусственного сдвига между отправками все не-потерянные сегменты
+   планировали приход в один и тот же тик — а <code>PriorityQueue</code> не
+   гарантирует порядок среди элементов с одинаковым приоритетом. Добавлен
+   сдвиг 0.01 на сегмент (реалистично: сериализация пакетов на линке не
+   бесплатна).</li>
+<li>С <code>DelayedAckMaxDelay=3.0</code> финальный ACK планировался позже, чем успевал
+   перезапуститься RTO-watchdog после fast retransmit — что вызывало
+   спонтанный повторный ретрансмит уже доставленных данных. Реальный
+   TCP-феномен (spurious retransmission из-за взаимодействия delayed ACK и
+   RTO), но не тот, который планировалось показать здесь; исправлено
+   уменьшением задержки до 1.5.</li>
+</ol>
+<p><strong>Ограничения этого прогона:</strong> RTT сэмплируется только один раз (дальше
+сегменты попадают под правило Карна); congestion window здесь ещё нет — это
+Модуль 4; однонаправленная задержка ACK считается мгновенной (упрощение).</p>
+<hr />
+<h2 id="38-tcp">Часть 3.8: Диагностика состояний TCP<a class="headerlink" href="#38-tcp" title="Permanent link">&para;</a></h2>
+<h3 id="ss">ss: Главный инструмент<a class="headerlink" href="#ss" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1"># Все TCP-соединения с состояниями</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>ss<span class="w"> </span>-tan
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="c1"># Только определённое состояние</span>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a>ss<span class="w"> </span>-tan<span class="w"> </span>state<span class="w"> </span>time-wait
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>ss<span class="w"> </span>-tan<span class="w"> </span>state<span class="w"> </span>close-wait
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>ss<span class="w"> </span>-tan<span class="w"> </span>state<span class="w"> </span>established
+<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a>
+<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a><span class="c1"># Подсчёт соединений по состояниям</span>
+<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>ss<span class="w"> </span>-tan<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;NR&gt;1 {print $1}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>uniq<span class="w"> </span>-c<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-rn
+<a id="__codelineno-38-11" name="__codelineno-38-11" href="#__codelineno-38-11"></a>
+<a id="__codelineno-38-12" name="__codelineno-38-12" href="#__codelineno-38-12"></a><span class="c1"># Детальная информация о конкретном соединении</span>
+<a id="__codelineno-38-13" name="__codelineno-38-13" href="#__codelineno-38-13"></a>ss<span class="w"> </span>-ti<span class="w"> </span>dst<span class="w"> </span><span class="m">10</span>.0.0.2:443
+<a id="__codelineno-38-14" name="__codelineno-38-14" href="#__codelineno-38-14"></a><span class="c1"># Вывод: cubic wscale:7,7 rto:204 rtt:1.2/0.5 mss:1448</span>
+<a id="__codelineno-38-15" name="__codelineno-38-15" href="#__codelineno-38-15"></a><span class="c1">#         cwnd:10 ssthresh:7 bytes_acked:15230 segs_out:120</span>
+</code></pre></div>
+<h3 id="nstat">nstat: Счётчики ядра<a class="headerlink" href="#nstat" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>nstat<span class="w"> </span>-az<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>tcp
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a><span class="c1"># Ключевые метрики:</span>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="c1"># TcpActiveOpens        — connect() вызовы (клиент)</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="c1"># TcpPassiveOpens       — accept() вызовы (сервер)</span>
+<a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a><span class="c1"># TcpInSegs / TcpOutSegs — входящие/исходящие сегменты</span>
+<a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a><span class="c1"># TcpRetransSegs        — ретрансмиты (должно быть &lt; 1% от OutSegs)</span>
+<a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a><span class="c1"># TcpExtTCPTimeouts     — RTO таймауты</span>
+<a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a><span class="c1"># TcpExtTCPLossProbes   — TLP probes (tail loss)</span>
+<a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a><span class="c1"># TcpExtTCPOFOQueue     — out-of-order пакеты</span>
+</code></pre></div>
+<h3 id="procnettcp">/proc/net/tcp: Прямой доступ к таблице<a class="headerlink" href="#procnettcp" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="c1"># Каждая строка — TCP-соединение</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>cat<span class="w"> </span>/proc/net/tcp
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="c1">#  sl  local_address rem_address   st tx_queue rx_queue ...</span>
+<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a><span class="c1">#   0: 0100007F:1F90 0100007F:C5D4 01 00000000:00000000 ...</span>
+<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a><span class="c1">#                                   ^^</span>
+<a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a><span class="c1">#                                   st = state (01 = ESTABLISHED)</span>
+</code></pre></div>
+<p>Состояние <code>st</code> в hex: 01=ESTABLISHED, 02=SYN_SENT, 06=TIME_WAIT, 08=CLOSE_WAIT, 0A=LISTEN.</p>
+<h3 id="ebpf">eBPF трассировка<a class="headerlink" href="#ebpf" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c1"># Отслеживание смены состояний TCP в реальном времени</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>bpftrace<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="s1">tracepoint:tcp:tcp_set_state {</span>
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a><span class="s1">    printf(&quot;%-6d %-16s %-6d -&gt; %-6d %s:%d -&gt; %s:%d\n&quot;,</span>
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a><span class="s1">           args-&gt;oldstate, comm, args-&gt;oldstate, args-&gt;newstate,</span>
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="s1">           ntop(AF_INET, &amp;args-&gt;saddr), args-&gt;sport,</span>
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a><span class="s1">           ntop(AF_INET, &amp;args-&gt;daddr), args-&gt;dport);</span>
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a><span class="s1">}</span>
+<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="s1">&#39;</span>
+<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a>
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="c1"># Распределение RTT по соединениям</span>
+<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a>bpftrace<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;</span>
+<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a><span class="s1">kretprobe:tcp_rcv_established {</span>
+<a id="__codelineno-41-14" name="__codelineno-41-14" href="#__codelineno-41-14"></a><span class="s1">    @rtt = hist(((struct tcp_sock *)arg0)-&gt;srtt_us &gt;&gt; 3);</span>
+<a id="__codelineno-41-15" name="__codelineno-41-15" href="#__codelineno-41-15"></a><span class="s1">}</span>
+<a id="__codelineno-41-16" name="__codelineno-41-16" href="#__codelineno-41-16"></a><span class="s1">&#39;</span>
+</code></pre></div>
+<hr />
+<h3 id="381-windows">3.8.1 Диагностика в Windows<a class="headerlink" href="#381-windows" title="Permanent link">&para;</a></h3>
+<p>Всё из 3.8 — Linux-специфика (<code>ss</code>, <code>nstat</code>, <code>/proc/net/tcp</code>, eBPF). Аналоги в Windows:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="c"># Аналог ss -tan</span>
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="nb">Get-NetTCPConnection</span> <span class="p">|</span> <span class="nb">Format-Table</span> <span class="n">State</span><span class="p">,</span> <span class="n">LocalPort</span><span class="p">,</span> <span class="n">RemotePort</span> <span class="n">-AutoSize</span>
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a><span class="c"># Аналог ss -tan state time-wait / close-wait</span>
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a><span class="nb">Get-NetTCPConnection</span> <span class="n">-State</span> <span class="n">TimeWait</span>
+<a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a><span class="nb">Get-NetTCPConnection</span> <span class="n">-State</span> <span class="n">CloseWait</span>
+<a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a>
+<a id="__codelineno-42-8" name="__codelineno-42-8" href="#__codelineno-42-8"></a><span class="c"># Аналог nstat -az | grep tcp</span>
+<a id="__codelineno-42-9" name="__codelineno-42-9" href="#__codelineno-42-9"></a><span class="n">netstat</span> <span class="n">-s</span> <span class="n">-p</span> <span class="n">tcp</span>
+<a id="__codelineno-42-10" name="__codelineno-42-10" href="#__codelineno-42-10"></a>
+<a id="__codelineno-42-11" name="__codelineno-42-11" href="#__codelineno-42-11"></a><span class="c"># Аналог /proc/net/tcp — прямого файлового доступа нет,</span>
+<a id="__codelineno-42-12" name="__codelineno-42-12" href="#__codelineno-42-12"></a><span class="c"># ближайший эквивалент — WMI/CIM класс</span>
+<a id="__codelineno-42-13" name="__codelineno-42-13" href="#__codelineno-42-13"></a><span class="nb">Get-CimInstance</span> <span class="n">-ClassName</span> <span class="n">MSFT_NetTCPConnection</span>
+<a id="__codelineno-42-14" name="__codelineno-42-14" href="#__codelineno-42-14"></a>
+<a id="__codelineno-42-15" name="__codelineno-42-15" href="#__codelineno-42-15"></a><span class="c"># Аналог eBPF-трассировки tcp_set_state — через ETW</span>
+<a id="__codelineno-42-16" name="__codelineno-42-16" href="#__codelineno-42-16"></a><span class="n">netsh</span> <span class="n">trace</span> <span class="nb">start </span><span class="n">provider</span><span class="p">=</span><span class="n">Microsoft-Windows-TCPIP</span> <span class="n">capture</span><span class="p">=</span><span class="n">yes</span> <span class="n">tracefile</span><span class="p">=</span><span class="n">c</span><span class="p">:\</span><span class="n">tcp</span><span class="p">.</span><span class="n">etl</span>
+<a id="__codelineno-42-17" name="__codelineno-42-17" href="#__codelineno-42-17"></a><span class="c"># Анализ переходов состояний — в Windows Performance Analyzer (см. Модуль 8, 8.9)</span>
+</code></pre></div>
+<p>Важное отличие обработки overlapping-сегментов от Linux — Windows исторически 
+консервативнее (ближе к BSD-модели "первый победил"), тогда как современный 
+Linux в части случаев отдаёт приоритет новым данным. Разные стеки по-разному 
+трактовали overlap ещё до появления единых рекомендаций — классическая проблема 
+из работы Ptacek &amp; Newsham (1998) про insertion/evasion атаки на NIDS через 
+рассинхронизацию reassembly.</p>
+<hr />
+<h2 id="39-production-">Часть 3.9: Типичные production-проблемы<a class="headerlink" href="#39-production-" title="Permanent link">&para;</a></h2>
+<h3 id="1-time_wait">Проблема 1: Тысячи TIME_WAIT<a class="headerlink" href="#1-time_wait" title="Permanent link">&para;</a></h3>
+<p><strong>Симптом:</strong> <code>ss -s</code> показывает 50K+ timewait. Новые исходящие соединения отвергаются с <code>EADDRNOTAVAIL</code>.</p>
+<p><strong>Решение:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>net.ipv4.tcp_tw_reuse<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>net.ipv4.ip_local_port_range<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1024</span><span class="w"> </span><span class="m">65535</span>
+</code></pre></div></p>
+<p>Также: используйте connection pooling (HTTP keep-alive, gRPC persistent connections).</p>
+<h3 id="2-syn_recv">Проблема 2: SYN_RECV растёт<a class="headerlink" href="#2-syn_recv" title="Permanent link">&para;</a></h3>
+<p><strong>Симптом:</strong> <code>ss -tan state syn-recv | wc -l</code> показывает тысячи. Легитимные клиенты не могут подключиться.</p>
+<p><strong>Диагностика:</strong> SYN flood или слишком маленький backlog.</p>
+<p><strong>Решение:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>net.ipv4.tcp_syncookies<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>net.ipv4.tcp_max_syn_backlog<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">65535</span>
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>net.core.somaxconn<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">65535</span>
+</code></pre></div></p>
+<h3 id="3-close_wait">Проблема 3: CLOSE_WAIT накапливаются<a class="headerlink" href="#3-close_wait" title="Permanent link">&para;</a></h3>
+<p><strong>Симптом:</strong> тысячи CLOSE_WAIT для одного процесса.</p>
+<p><strong>Причина:</strong> приложение не вызывает <code>close()</code> на сокете после получения EOF.</p>
+<p><strong>Решение:</strong> искать баг в коде. Проверить утечки file descriptors:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>ls<span class="w"> </span>-la<span class="w"> </span>/proc/&lt;pid&gt;/fd<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+</code></pre></div></p>
+<h3 id="4">Проблема 4: Высокий % ретрансмитов<a class="headerlink" href="#4" title="Permanent link">&para;</a></h3>
+<p><strong>Симптом:</strong> <code>nstat</code> показывает <code>TcpRetransSegs / TcpOutSegs &gt; 1%</code>.</p>
+<p><strong>Диагностика:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a><span class="c1"># Какие соединения теряют пакеты</span>
+<a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a>tcpretrans<span class="w">  </span><span class="c1"># из bcc-tools</span>
+<a id="__codelineno-46-3" name="__codelineno-46-3" href="#__codelineno-46-3"></a>
+<a id="__codelineno-46-4" name="__codelineno-46-4" href="#__codelineno-46-4"></a><span class="c1"># Или</span>
+<a id="__codelineno-46-5" name="__codelineno-46-5" href="#__codelineno-46-5"></a>ss<span class="w"> </span>-ti<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>retrans
+</code></pre></div></p>
+<p><strong>Причины:</strong> congestion, битый кабель, перегруженный свитч, firewall дропает.</p>
+<h3 id="5-sack-panic-cve-2019-11477-cve-2019-11478">Проблема 5: SACK Panic (CVE-2019-11477 / CVE-2019-11478)<a class="headerlink" href="#5-sack-panic-cve-2019-11477-cve-2019-11478" title="Permanent link">&para;</a></h3>
+<p>Уязвимость в обработке SACK-scoreboard в Linux-ядрах до 4.14: специально сконструированная последовательность мелких сегментов с SACK-блоками приводила к excessive fragmentation внутренней структуры <code>tcp_sock</code>, вызывая panic или resource exhaustion при пересчёте scoreboard на каждый ACK. Если реализация SACK не ограничивает сложность объединения блоков — эта операция становится O(n²) вместо O(n).</p>
+<h3 id="6-out-of-order-queue-exhaustion">Проблема 6: Out-of-Order queue exhaustion под атакой<a class="headerlink" href="#6-out-of-order-queue-exhaustion" title="Permanent link">&para;</a></h3>
+<p>Если receiver принимает сегменты вне окна без строгого лимита на размер OFO-очереди, атакующий может завалить память сервера тысячами мелких "дырявых" сегментов, которые никогда не закрывают пропуск. В Linux ограничивается <code>tcp_max_orphans</code> и <code>tcp_collapse_ofo_queue()</code>.</p>
+<h3 id="7-duplicate-ack-storm-ecmpmultipath-reordering">Проблема 7: Duplicate ACK storm от ECMP/multipath reordering<a class="headerlink" href="#7-duplicate-ack-storm-ecmpmultipath-reordering" title="Permanent link">&para;</a></h3>
+<p>В дата-центрах с ECMP-балансировкой пакеты одного потока иногда идут через разные пути и приходят с существенным reorder, который сервер интерпретирует как потерю → лишние Fast Retransmit при отсутствии реальной потери. Решается через RACK (RFC 8985) вместо classic 3-dup-ACK эвристики.</p>
+<h3 id="8-receive-window-zero-">Проблема 8: Receive Window Zero из-за медленного приложения<a class="headerlink" href="#8-receive-window-zero-" title="Permanent link">&para;</a></h3>
+<p>Если приложение не вычитывает данные из сокета достаточно быстро, <code>RCV.WND</code> схлопывается в 0, клиент замирает в Persist Timer (3.7) — выглядит как "сеть тормозит", хотя проблема на уровне application thread pool starvation. Диагностируется через <code>ss -ti</code> (<code>rcv_space</code>) или <code>Get-NetTCPConnection</code> + ETW на Windows.</p>
+<hr />
+<h2 id="_6">Практическое задание<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<h3 id="1-tcp-state-machine">Задача 1: Наблюдение за TCP state machine<a class="headerlink" href="#1-tcp-state-machine" title="Permanent link">&para;</a></h3>
+<p>Запустите bpftrace трассировку <code>tcp_set_state</code>. Откройте в браузере сайт. Наблюдайте переходы: CLOSED → SYN_SENT → ESTABLISHED → FIN_WAIT_1 → FIN_WAIT_2 → TIME_WAIT → CLOSED.</p>
+<h3 id="2-syn-flood">Задача 2: SYN Flood и защита<a class="headerlink" href="#2-syn-flood" title="Permanent link">&para;</a></h3>
+<p>На стенде запустите <code>hping3 --syn --flood</code> на сервер. Наблюдайте рост SYN_RECV через <code>ss -tan state syn-recv | wc -l</code>. Включите SYN cookies и повторите — accept queue должна оставаться стабильной.</p>
+<h3 id="3-time_wait-exhaustion">Задача 3: TIME_WAIT exhaustion<a class="headerlink" href="#3-time_wait-exhaustion" title="Permanent link">&para;</a></h3>
+<p>Напишите скрипт, открывающий и закрывающий тысячи TCP-соединений в секунду. Наблюдайте накопление TIME_WAIT. Включите <code>tcp_tw_reuse</code> и проверьте разницу.</p>
+<h3 id="4-close_wait">Задача 4: CLOSE_WAIT детектив<a class="headerlink" href="#4-close_wait" title="Permanent link">&para;</a></h3>
+<p>Напишите сервер, который намеренно не вызывает <code>close()</code> после получения FIN от клиента. Подключитесь 100 раз и закройте клиент. Убедитесь, что сервер накопил 100 CLOSE_WAIT. Найдите их через <code>ss -tanp state close-wait</code>.</p>
+<h3 id="5-rto-fast-retransmit">Задача 5: RTO и Fast Retransmit<a class="headerlink" href="#5-rto-fast-retransmit" title="Permanent link">&para;</a></h3>
+<p>На стенде добавьте 5% потерь через <code>tc netem loss 5%</code>. Запустите iperf3 и одновременно трейсите ретрансмиты через <code>tcpretrans</code>. Подсчитайте: какая доля ретрансмитов была по RTO таймауту, а какая — по Fast Retransmit (3 dup ACK)?</p>
+<h2 id="tc-qdisc-add-dev-ens34-root-netem-loss-5-tcpretrans-iperf3-c-1921685010-t-30"><div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a><span class="c1"># На роутере</span>
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a>tc<span class="w"> </span>qdisc<span class="w"> </span>add<span class="w"> </span>dev<span class="w"> </span>ens34<span class="w"> </span>root<span class="w"> </span>netem<span class="w"> </span>loss<span class="w"> </span><span class="m">5</span>%
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a>
+<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a><span class="c1"># На клиенте</span>
+<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a>tcpretrans<span class="w"> </span><span class="p">&amp;</span>
+<a id="__codelineno-47-6" name="__codelineno-47-6" href="#__codelineno-47-6"></a>iperf3<span class="w"> </span>-c<span class="w"> </span><span class="m">192</span>.168.50.10<span class="w"> </span>-t<span class="w"> </span><span class="m">30</span>
+</code></pre></div><a class="headerlink" href="#tc-qdisc-add-dev-ens34-root-netem-loss-5-tcpretrans-iperf3-c-1921685010-t-30" title="Permanent link">&para;</a></h2>
+<h2 id="310-tls-handshake-tcp">Часть 3.10: TLS Handshake — Шифрование поверх TCP<a class="headerlink" href="#310-tls-handshake-tcp" title="Permanent link">&para;</a></h2>
+<p>Современный интернет полностью зашифрован. После TCP 3-way handshake <strong>всегда</strong> следует TLS handshake. Это дополнительные RTT, которые напрямую влияют на latency.</p>
+<h3 id="tls-12-2-rtt">TLS 1.2 — 2 дополнительных RTT<a class="headerlink" href="#tls-12-2-rtt" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>Клиент                                   Сервер
+<a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a>  │                                         │
+<a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a>  │  ── TCP SYN ──────────────────────────→ │  RTT 1 (TCP)
+<a id="__codelineno-48-4" name="__codelineno-48-4" href="#__codelineno-48-4"></a>  │  ←─ TCP SYN-ACK ─────────────────────  │
+<a id="__codelineno-48-5" name="__codelineno-48-5" href="#__codelineno-48-5"></a>  │  ── TCP ACK ──────────────────────────→ │
+<a id="__codelineno-48-6" name="__codelineno-48-6" href="#__codelineno-48-6"></a>  │                                         │
+<a id="__codelineno-48-7" name="__codelineno-48-7" href="#__codelineno-48-7"></a>  │  ── ClientHello ──────────────────────→ │  RTT 2 (TLS)
+<a id="__codelineno-48-8" name="__codelineno-48-8" href="#__codelineno-48-8"></a>  │  ←─ ServerHello, Certificate,          │
+<a id="__codelineno-48-9" name="__codelineno-48-9" href="#__codelineno-48-9"></a>  │     ServerKeyExchange, ServerHelloDone  │
+<a id="__codelineno-48-10" name="__codelineno-48-10" href="#__codelineno-48-10"></a>  │                                         │
+<a id="__codelineno-48-11" name="__codelineno-48-11" href="#__codelineno-48-11"></a>  │  ── ClientKeyExchange, ChangeCipherSpec│  RTT 3 (TLS)
+<a id="__codelineno-48-12" name="__codelineno-48-12" href="#__codelineno-48-12"></a>  │     Finished ─────────────────────────→│
+<a id="__codelineno-48-13" name="__codelineno-48-13" href="#__codelineno-48-13"></a>  │  ←─ ChangeCipherSpec, Finished ────────│
+<a id="__codelineno-48-14" name="__codelineno-48-14" href="#__codelineno-48-14"></a>  │                                         │
+<a id="__codelineno-48-15" name="__codelineno-48-15" href="#__codelineno-48-15"></a>  │  ── HTTP GET (encrypted) ─────────────→│  RTT 4 (первый запрос!)
+</code></pre></div>
+<p><pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C-&gt;&gt;S: TCP SYN
+    S--&gt;&gt;C: TCP SYN-ACK
+    C-&gt;&gt;S: TCP ACK
+
+    Note over C, S: RTT 2: TLS Handshake (Part 1)
+    C-&gt;&gt;S: ClientHello
+    S--&gt;&gt;C: ServerHello, Certificate, ServerKeyExchange, ServerHelloDone
+
+    Note over C, S: RTT 3: TLS Handshake (Part 2)
+    C-&gt;&gt;S: ClientKeyExchange, ChangeCipherSpec, Finished
+    S--&gt;&gt;C: ChangeCipherSpec, Finished
+
+    Note over C, S: RTT 4: Application Data
+    C-&gt;&gt;S: HTTP GET (encrypted)
+    S--&gt;&gt;C: HTTP Response (encrypted)</code></pre>
+<strong>Итого:</strong> 3 RTT до первого байта данных (1 TCP + 2 TLS). При RTT = 100ms — 300ms ожидания.</p>
+<h3 id="tls-13-1-rtt">TLS 1.3 — 1 дополнительный RTT<a class="headerlink" href="#tls-13-1-rtt" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>Клиент                                   Сервер
+<a id="__codelineno-49-2" name="__codelineno-49-2" href="#__codelineno-49-2"></a>  │                                         │
+<a id="__codelineno-49-3" name="__codelineno-49-3" href="#__codelineno-49-3"></a>  │  ── TCP SYN ──────────────────────────→ │  RTT 1 (TCP)
+<a id="__codelineno-49-4" name="__codelineno-49-4" href="#__codelineno-49-4"></a>  │  ←─ TCP SYN-ACK ─────────────────────  │
+<a id="__codelineno-49-5" name="__codelineno-49-5" href="#__codelineno-49-5"></a>  │  ── TCP ACK ──────────────────────────→ │
+<a id="__codelineno-49-6" name="__codelineno-49-6" href="#__codelineno-49-6"></a>  │                                         │
+<a id="__codelineno-49-7" name="__codelineno-49-7" href="#__codelineno-49-7"></a>  │  ── ClientHello + KeyShare ───────────→ │  RTT 2 (TLS 1.3)
+<a id="__codelineno-49-8" name="__codelineno-49-8" href="#__codelineno-49-8"></a>  │  ←─ ServerHello + KeyShare,            │
+<a id="__codelineno-49-9" name="__codelineno-49-9" href="#__codelineno-49-9"></a>  │     EncryptedExtensions, Certificate,   │
+<a id="__codelineno-49-10" name="__codelineno-49-10" href="#__codelineno-49-10"></a>  │     Finished                            │
+<a id="__codelineno-49-11" name="__codelineno-49-11" href="#__codelineno-49-11"></a>  │  ── Finished ─────────────────────────→ │
+<a id="__codelineno-49-12" name="__codelineno-49-12" href="#__codelineno-49-12"></a>  │                                         │
+<a id="__codelineno-49-13" name="__codelineno-49-13" href="#__codelineno-49-13"></a>  │  ── HTTP GET (encrypted) ─────────────→ │  RTT 3 (первый запрос)
+</code></pre></div>
+<p><pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C-&gt;&gt;S: TCP SYN
+    S--&gt;&gt;C: TCP SYN-ACK
+    C-&gt;&gt;S: TCP ACK
+
+    Note over C, S: RTT 2: TLS 1.3 Handshake
+    C-&gt;&gt;S: ClientHello + KeyShare
+    S--&gt;&gt;C: ServerHello + KeyShare, EncryptedExtensions, Certificate, Finished
+    C-&gt;&gt;S: Finished
+
+    Note over C, S: RTT 3: Application Data
+    C-&gt;&gt;S: HTTP GET (encrypted)
+    S--&gt;&gt;C: HTTP Response (encrypted)</code></pre>
+<strong>Итого:</strong> 2 RTT до первого байта данных (1 TCP + 1 TLS). Ключевая оптимизация: клиент отправляет <code>KeyShare</code> уже в <code>ClientHello</code>, сервер может сразу вычислить общий секрет.</p>
+<h3 id="tls-13-0-rtt-early-data">TLS 1.3 0-RTT (Early Data)<a class="headerlink" href="#tls-13-0-rtt-early-data" title="Permanent link">&para;</a></h3>
+<p>При повторном подключении к серверу, с которым уже общались:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a>Клиент                                   Сервер
+<a id="__codelineno-50-2" name="__codelineno-50-2" href="#__codelineno-50-2"></a>  │                                         │
+<a id="__codelineno-50-3" name="__codelineno-50-3" href="#__codelineno-50-3"></a>  │  ── TCP SYN ──────────────────────────→ │  RTT 1 (TCP)
+<a id="__codelineno-50-4" name="__codelineno-50-4" href="#__codelineno-50-4"></a>  │  ←─ TCP SYN-ACK ─────────────────────  │
+<a id="__codelineno-50-5" name="__codelineno-50-5" href="#__codelineno-50-5"></a>  │  ── TCP ACK ──────────────────────────→ │
+<a id="__codelineno-50-6" name="__codelineno-50-6" href="#__codelineno-50-6"></a>  │                                         │
+<a id="__codelineno-50-7" name="__codelineno-50-7" href="#__codelineno-50-7"></a>  │  ── ClientHello + KeyShare             │  RTT 2 (TLS + данные!)
+<a id="__codelineno-50-8" name="__codelineno-50-8" href="#__codelineno-50-8"></a>  │     + Early Data (HTTP GET) ──────────→│
+<a id="__codelineno-50-9" name="__codelineno-50-9" href="#__codelineno-50-9"></a>  │  ←─ ServerHello + Finished             │
+<a id="__codelineno-50-10" name="__codelineno-50-10" href="#__codelineno-50-10"></a>  │     + HTTP Response ──────────────────  │
+</code></pre></div>
+<p><pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: RTT 1: TCP Handshake
+    C-&gt;&gt;S: TCP SYN
+    S--&gt;&gt;C: TCP SYN-ACK
+    C-&gt;&gt;S: TCP ACK
+
+    Note over C, S: RTT 2: TLS 1.3 0-RTT
+    C-&gt;&gt;S: ClientHello + KeyShare + Early Data (HTTP GET)
+    S--&gt;&gt;C: ServerHello + EncryptedExtensions + Finished + HTTP Response
+
+    Note over C, S: Соединение установлено</code></pre>
+<strong>Итого:</strong> 1 RTT до первого байта данных. Клиент отправляет зашифрованный HTTP-запрос <strong>вместе с ClientHello</strong>, используя PSK (Pre-Shared Key) из предыдущей сессии.</p>
+<p><strong>Опасность 0-RTT:</strong> Early Data не защищена от replay-атак. Сервер не может гарантировать, что запрос не был перехвачен и воспроизведён. Поэтому 0-RTT безопасен <strong>только для идемпотентных запросов</strong> (GET, HEAD). Никогда — для POST с side effects.</p>
+<h3 id="tcp-fast-open-tls-13-0-rtt-end-to-end">TCP Fast Open + TLS 1.3 = 0-RTT end-to-end<a class="headerlink" href="#tcp-fast-open-tls-13-0-rtt-end-to-end" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a>Клиент                                   Сервер
+<a id="__codelineno-51-2" name="__codelineno-51-2" href="#__codelineno-51-2"></a>  │                                         │
+<a id="__codelineno-51-3" name="__codelineno-51-3" href="#__codelineno-51-3"></a>  │  ── TCP SYN + TFO Cookie              │  1 RTT = TCP + TLS + данные
+<a id="__codelineno-51-4" name="__codelineno-51-4" href="#__codelineno-51-4"></a>  │     + ClientHello + KeyShare           │
+<a id="__codelineno-51-5" name="__codelineno-51-5" href="#__codelineno-51-5"></a>  │     + Early Data ─────────────────────→│
+<a id="__codelineno-51-6" name="__codelineno-51-6" href="#__codelineno-51-6"></a>  │  ←─ SYN-ACK + ServerHello             │
+<a id="__codelineno-51-7" name="__codelineno-51-7" href="#__codelineno-51-7"></a>  │     + HTTP Response ──────────────────  │
+</code></pre></div>
+<p><pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant C as Клиент
+    participant S as Сервер
+
+    Note over C, S: 1 RTT: TCP Fast Open + TLS 0-RTT
+    C-&gt;&gt;S: SYN + TFO Cookie + ClientHello + KeyShare + Early Data (HTTP GET)
+    S--&gt;&gt;C: SYN-ACK + ServerHello + Finished + HTTP Response
+
+    Note over C, S: Соединение установлено (данные получены)</code></pre>
+Комбинация TCP Fast Open (часть 3.3) и TLS 1.3 0-RTT позволяет отправить HTTP-запрос <strong>в первом же SYN-пакете</strong>. Реальный 0-RTT.</p>
+<h3 id="ktls">kTLS — шифрование в ядре<a class="headerlink" href="#ktls" title="Permanent link">&para;</a></h3>
+<p>Начиная с Linux 4.13, TLS record layer можно перенести в ядро:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a><span class="c1">// User space</span>
+<a id="__codelineno-52-2" name="__codelineno-52-2" href="#__codelineno-52-2"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">SOL_TCP</span><span class="p">,</span><span class="w"> </span><span class="n">TCP_ULP</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tls&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="s">&quot;tls&quot;</span><span class="p">));</span>
+<a id="__codelineno-52-3" name="__codelineno-52-3" href="#__codelineno-52-3"></a><span class="n">setsockopt</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">SOL_TLS</span><span class="p">,</span><span class="w"> </span><span class="n">TLS_TX</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">crypto_info</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">crypto_info</span><span class="p">));</span>
+<a id="__codelineno-52-4" name="__codelineno-52-4" href="#__codelineno-52-4"></a>
+<a id="__codelineno-52-5" name="__codelineno-52-5" href="#__codelineno-52-5"></a><span class="c1">// После этого:</span>
+<a id="__codelineno-52-6" name="__codelineno-52-6" href="#__codelineno-52-6"></a><span class="c1">// - Handshake: user space (OpenSSL / rustls)</span>
+<a id="__codelineno-52-7" name="__codelineno-52-7" href="#__codelineno-52-7"></a><span class="c1">// - Record encryption: kernel (crypto API / AES-NI)</span>
+<a id="__codelineno-52-8" name="__codelineno-52-8" href="#__codelineno-52-8"></a><span class="c1">// - sendfile() работает напрямую: файл → шифрование → NIC</span>
+</code></pre></div>
+<p><strong>Зачем:</strong> Без kTLS <code>sendfile()</code> бесполезен для HTTPS — данные нужно читать в user space для шифрования. kTLS возвращает zero-copy: <code>sendfile()</code> отправляет файл напрямую через TLS, не копируя в user space.</p>
+<p><strong>Nginx</strong> с kTLS (начиная с 1.21.4) показывает до <strong>30% снижения CPU</strong> на TLS-тяжёлых нагрузках.</p>
+<h3 id="_7">Влияние на диагностику<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a><span class="c1"># Проблема: Wireshark видит только шифротекст после handshake</span>
+<a id="__codelineno-53-2" name="__codelineno-53-2" href="#__codelineno-53-2"></a><span class="c1"># Решение 1: SSLKEYLOGFILE для расшифровки</span>
+<a id="__codelineno-53-3" name="__codelineno-53-3" href="#__codelineno-53-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SSLKEYLOGFILE</span><span class="o">=</span>/tmp/keys.log
+<a id="__codelineno-53-4" name="__codelineno-53-4" href="#__codelineno-53-4"></a>curl<span class="w"> </span>https://example.com
+<a id="__codelineno-53-5" name="__codelineno-53-5" href="#__codelineno-53-5"></a><span class="c1"># Wireshark → Preferences → TLS → (Pre)-Master-Secret log filename</span>
+<a id="__codelineno-53-6" name="__codelineno-53-6" href="#__codelineno-53-6"></a>
+<a id="__codelineno-53-7" name="__codelineno-53-7" href="#__codelineno-53-7"></a><span class="c1"># Решение 2: ss показывает TCP-метрики независимо от TLS</span>
+<a id="__codelineno-53-8" name="__codelineno-53-8" href="#__codelineno-53-8"></a>ss<span class="w"> </span>-ti<span class="w"> </span>dst<span class="w"> </span>example.com
+<a id="__codelineno-53-9" name="__codelineno-53-9" href="#__codelineno-53-9"></a><span class="c1"># rto:204 rtt:12.5/6.2 cwnd:10 retrans:0/0 — это TCP, шифрование не мешает</span>
+<a id="__codelineno-53-10" name="__codelineno-53-10" href="#__codelineno-53-10"></a>
+<a id="__codelineno-53-11" name="__codelineno-53-11" href="#__codelineno-53-11"></a><span class="c1"># Решение 3: openssl s_client для диагностики handshake</span>
+<a id="__codelineno-53-12" name="__codelineno-53-12" href="#__codelineno-53-12"></a>openssl<span class="w"> </span>s_client<span class="w"> </span>-connect<span class="w"> </span>example.com:443<span class="w"> </span>-tls1_3<span class="w"> </span>-msg<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;Handshake|Protocol&quot;</span>
+</code></pre></div>
+<h3 id="rtt">Сравнение RTT до первых данных<a class="headerlink" href="#rtt" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Протокол</th>
+<th>RTT до данных</th>
+<th>Комментарий</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TCP</td>
+<td>1 RTT</td>
+<td>Без шифрования (только 3-way handshake)</td>
+</tr>
+<tr>
+<td>TCP + TLS 1.2</td>
+<td>3 RTT</td>
+<td>Два дополнительных round-trip</td>
+</tr>
+<tr>
+<td>TCP + TLS 1.3</td>
+<td>2 RTT</td>
+<td>Один дополнительный round-trip</td>
+</tr>
+<tr>
+<td>TCP + TLS 1.3 (0-RTT)</td>
+<td>1 RTT</td>
+<td>Повторное подключение с PSK</td>
+</tr>
+<tr>
+<td>TFO + TLS 1.3 (0-RTT)</td>
+<td>0 RTT</td>
+<td>Данные в SYN (оба cookie/PSK cached)</td>
+</tr>
+<tr>
+<td><strong>QUIC</strong></td>
+<td><strong>0-1 RTT</strong></td>
+<td><strong>TLS 1.3 встроен в транспорт (см. Модуль 7)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Именно эта разница в RTT — главная причина создания QUIC: убрать накладные расходы на отдельный TLS handshake поверх TCP (подробнее в Модуле 7).</p>
+<hr />
+<p><strong>Следующий модуль:</strong> Bufferbloat и Congestion Control — как TCP управляет скоростью передачи и почему буферы убивают latency.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>
